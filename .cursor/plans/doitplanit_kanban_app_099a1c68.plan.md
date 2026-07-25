@@ -4,28 +4,28 @@ overview: Build DoitPlanit as a polished Next.js Kanban board with Supabase anon
 todos:
   - id: scaffold
     content: Create D:\Projects\doitplanit, move workspace, scaffold Next.js + Tailwind + deps
-    status: in_progress
+    status: completed
   - id: supabase-schema
     content: "Phase 2a: Write tasks migration (schema, bonus fields, position, RLS policies)"
-    status: pending
+    status: completed
   - id: supabase-client
     content: "Phase 2b: Supabase browser client + env template (.env.local.example)"
-    status: pending
+    status: completed
   - id: supabase-auth
     content: "Phase 2c: Anonymous guest sign-in bootstrap on first launch"
-    status: pending
+    status: completed
   - id: supabase-crud
     content: "Phase 2d: Task query helpers (list, create, update status/position, update fields, delete)"
-    status: pending
+    status: completed
   - id: ui-design-system
     content: "Phase 3a: Design tokens, fonts, globals, app shell header with DoitPlanit brand"
-    status: pending
+    status: completed
   - id: ui-board-static
     content: "Phase 3b: Static board layout — four columns + task card component (no DnD yet)"
-    status: pending
+    status: completed
   - id: ui-create-edit
     content: "Phase 3c: Create-task modal and edit/delete detail panel wired to CRUD"
-    status: pending
+    status: completed
   - id: ui-dnd
     content: "Phase 3d: @dnd-kit drag-and-drop across columns with optimistic status/position updates"
     status: pending

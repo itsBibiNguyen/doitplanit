@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
+/* ------------------------------------------------------------------ *
+ * DoitPlanit design tokens — Linear-inspired cool slate + teal accent *
+ * ------------------------------------------------------------------ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base surfaces */
+  --ink: #0b0f14; /* near-black text */
+  --ink-soft: #3d4a58; /* secondary text */
+  --ink-muted: #7b8794; /* tertiary / meta text */
+  --canvas: #f4f6f8; /* board background */
+  --surface: #ffffff; /* cards & columns */
+  --surface-2: #eef1f5; /* column body tint */
+  --border: #e2e8f0; /* hairline borders */
+  --border-strong: #cbd5e1;
+
+  /* Accent (teal) */
+  --accent: #0d9488;
+  --accent-hover: #0f766e;
+  --accent-soft: #d5f0ec;
+  --accent-ring: rgba(13, 148, 136, 0.35);
+
+  /* Priority pips */
+  --prio-low: #64748b;
+  --prio-normal: #0d9488;
+  --prio-high: #e11d48;
+
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgba(11, 15, 20, 0.06),
+    0 1px 3px rgba(11, 15, 20, 0.04);
+  --shadow-lift: 0 12px 28px rgba(11, 15, 20, 0.18);
+  --shadow-panel: 0 20px 60px rgba(11, 15, 20, 0.22);
+
+  --radius: 12px;
+  --radius-sm: 8px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-prio-low: var(--prio-low);
+  --color-prio-normal: var(--prio-normal);
+  --color-prio-high: var(--prio-high);
+
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+
+  --radius-card: var(--radius);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin, unobtrusive scrollbars for the board's horizontal/vertical scroll */
+.dp-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.dp-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.dp-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid var(--canvas);
+}
+.dp-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes dp-column-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.dp-column-in {
+  animation: dp-column-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.dp-fade-in {
+  animation: dp-fade-in 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp-column-in,
+  .dp-fade-in {
+    animation: none;
+  }
 }
