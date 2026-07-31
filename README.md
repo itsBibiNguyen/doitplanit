@@ -34,7 +34,7 @@ npm install
 
 ### 2. Create a Supabase project
 
-Create a free project at [supabase.com](https://supabase.com). Once it's ready, grab the project URL and anon key from **Project Settings → API**.
+Create a free project at [supabase.com](https://supabase.com). Once it's ready, grab the project URL and publishable key (`sb_publishable_...`) from **Project Settings → API Keys**.
 
 ### 3. Configure environment variables
 
@@ -46,10 +46,12 @@ cp .env.local.example .env.local
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-Both are public client-side keys and are safe to expose in the browser — RLS is what protects your data. Never put the `service_role` key here.
+Both are public client-side values and are safe to expose in the browser — RLS is what protects your data. Never put a secret key (`sb_secret_...`, or the legacy `service_role` key) here.
+
+If your project predates the new API keys and only offers a legacy `anon` key, set `NEXT_PUBLIC_SUPABASE_ANON_KEY` instead; the app falls back to it. Supabase removes legacy keys at the end of 2026, so migrate when you can.
 
 ### 4. Set up the database
 
@@ -146,6 +148,6 @@ npm run lint    # ESLint
 
 ## Deployment
 
-The app deploys to [Vercel](https://vercel.com) with no extra configuration. Import the repository, then add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as environment variables before the first build.
+The app deploys to [Vercel](https://vercel.com) with no extra configuration. Import the repository, then add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` as environment variables before the first build.
 
 A live URL will be listed here once deployed.
