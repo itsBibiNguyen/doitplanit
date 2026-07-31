@@ -19,8 +19,9 @@ const DUE_STYLES: Record<string, string> = {
 interface TaskCardProps {
   task: Task;
   onOpen?: (task: Task) => void;
-  /** Drag handle listeners/attributes injected by dnd-kit (Phase 3d). */
-  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  /** Drag handle listeners/attributes injected by dnd-kit. */
+  dragHandleProps?: React.ButtonHTMLAttributes<HTMLButtonElement>;
+  dragHandleRef?: React.Ref<HTMLButtonElement>;
   isDragging?: boolean;
   isOverlay?: boolean;
 }
@@ -29,6 +30,7 @@ export function TaskCard({
   task,
   onOpen,
   dragHandleProps,
+  dragHandleRef,
   isDragging,
   isOverlay,
 }: TaskCardProps) {
@@ -42,6 +44,8 @@ export function TaskCard({
       tabIndex={0}
       onClick={() => onOpen?.(task)}
       onKeyDown={(e) => {
+        // Let the drag handle keep Enter/Space for starting a keyboard drag.
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onOpen?.(task);
@@ -60,10 +64,15 @@ export function TaskCard({
         </p>
         <button
           type="button"
-          aria-label="Drag task"
+          aria-label={`Drag ${task.title}`}
           onClick={(e) => e.stopPropagation()}
           {...dragHandleProps}
-          className="-mr-1 -mt-1 shrink-0 cursor-grab touch-none rounded-md p-1 text-ink-muted opacity-0 transition-opacity hover:bg-surface-2 group-hover:opacity-100 active:cursor-grabbing"
+          ref={dragHandleRef}
+          className={cn(
+            "-mr-1.5 -mt-1.5 shrink-0 cursor-grab touch-none rounded-md p-1.5 text-ink-muted/70 transition-colors",
+            "hover:bg-surface-2 hover:text-ink-soft active:cursor-grabbing",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]",
+          )}
         >
           <GripIcon className="h-4 w-4" />
         </button>

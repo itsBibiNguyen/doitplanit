@@ -2,10 +2,9 @@
 
 import { getSupabaseClient } from "./client";
 import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
+import { POSITION_STEP } from "@/lib/board";
 
 const TABLE = "tasks";
-/** Gap between task positions; leaves room to insert between neighbours. */
-export const POSITION_STEP = 1000;
 
 export interface NewTaskInput {
   title: string;
@@ -125,19 +124,4 @@ async function nextPositionForStatus(status: TaskStatus): Promise<number> {
   if (error) throw error;
   const max = data?.[0]?.position ?? 0;
   return Number(max) + POSITION_STEP;
-}
-
-/**
- * Compute a fractional position that places a card between two neighbours in a
- * column. Pass the position of the card that will sit above / below the drop
- * slot (or null when dropping at an edge).
- */
-export function positionBetween(
-  before: number | null,
-  after: number | null,
-): number {
-  if (before == null && after == null) return POSITION_STEP;
-  if (before == null) return (after as number) - POSITION_STEP;
-  if (after == null) return before + POSITION_STEP;
-  return (before + after) / 2;
 }

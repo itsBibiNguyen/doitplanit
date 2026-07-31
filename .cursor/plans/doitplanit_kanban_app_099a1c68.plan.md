@@ -28,7 +28,7 @@ todos:
     status: completed
   - id: ui-dnd
     content: "Phase 3d: @dnd-kit drag-and-drop across columns with optimistic status/position updates"
-    status: pending
+    status: completed
   - id: states-loading
     content: "Phase 4a: Board/column/card loading skeletons during auth + fetch"
     status: pending

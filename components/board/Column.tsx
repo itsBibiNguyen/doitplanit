@@ -1,13 +1,21 @@
 "use client";
 
+import { useMemo } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import type { Task, TaskStatus } from "@/lib/types";
-import { TaskCard } from "./TaskCard";
+import { cn } from "@/lib/utils";
+import { SortableTaskCard } from "./SortableTaskCard";
 import { PlusIcon, InboxIcon } from "@/components/icons";
 
 interface ColumnProps {
   status: TaskStatus;
   label: string;
   tasks: Task[];
+  isDropTarget?: boolean;
   onOpenTask?: (task: Task) => void;
   onAddTask?: (status: TaskStatus) => void;
 }
@@ -16,11 +24,24 @@ export function Column({
   status,
   label,
   tasks,
+  isDropTarget,
   onOpenTask,
   onAddTask,
 }: ColumnProps) {
+  const { setNodeRef } = useDroppable({
+    id: status,
+    data: { type: "column", status },
+  });
+
+  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
+
   return (
-    <section className="flex h-full w-[300px] shrink-0 flex-col rounded-[var(--radius-card)] bg-surface-2/70">
+    <section
+      className={cn(
+        "flex h-full w-[300px] shrink-0 flex-col rounded-[var(--radius-card)] bg-surface-2/70 transition-colors",
+        isDropTarget && "bg-accent-soft/70 ring-1 ring-[var(--accent-ring)]",
+      )}
+    >
       <header className="flex items-center justify-between px-3 pb-2 pt-3">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-ink">{label}</h2>
@@ -38,15 +59,24 @@ export function Column({
         </button>
       </header>
 
-      <div className="dp-scroll flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
-        {tasks.length === 0 ? (
-          <EmptyColumn label={label} onAddTask={() => onAddTask?.(status)} />
-        ) : (
-          tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onOpen={onOpenTask} />
-          ))
-        )}
-      </div>
+      <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+        <div
+          ref={setNodeRef}
+          className="dp-scroll flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2"
+        >
+          {tasks.length === 0 ? (
+            <EmptyColumn label={label} onAddTask={() => onAddTask?.(status)} />
+          ) : (
+            tasks.map((task) => (
+              <SortableTaskCard
+                key={task.id}
+                task={task}
+                onOpen={onOpenTask}
+              />
+            ))
+          )}
+        </div>
+      </SortableContext>
     </section>
   );
 }

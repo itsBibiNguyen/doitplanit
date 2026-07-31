@@ -100,6 +100,15 @@ body {
   animation: dp-column-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* While a card is in flight, keep the grab cursor everywhere and stop the
+   pointer from selecting text under the drag. */
+.dp-dragging {
+  user-select: none;
+}
+.dp-dragging * {
+  cursor: grabbing !important;
+}
+
 @keyframes dp-fade-in {
   from {
     opacity: 0;

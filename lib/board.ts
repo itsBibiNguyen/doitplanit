@@ -1,0 +1,119 @@
+import type { Active, Over } from "@dnd-kit/core";
+import type { Task, TaskStatus } from "@/lib/types";
+import { TASK_STATUSES } from "@/lib/types";
+
+/** Gap between task positions; leaves room to insert between neighbours. */
+export const POSITION_STEP = 1000;
+
+export const STATUS_IDS = TASK_STATUSES.map((s) => s.id);
+
+export const STATUS_LABEL = Object.fromEntries(
+  TASK_STATUSES.map((s) => [s.id, s.label]),
+) as Record<TaskStatus, string>;
+
+const byPosition = (a: Task, b: Task) => a.position - b.position;
+
+export function isStatusId(value: string): value is TaskStatus {
+  return (STATUS_IDS as string[]).includes(value);
+}
+
+/** Split a flat task list into board columns, each sorted top-to-bottom. */
+export function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
+  const groups: Record<TaskStatus, Task[]> = {
+    todo: [],
+    in_progress: [],
+    in_review: [],
+    done: [],
+  };
+  for (const task of tasks) groups[task.status]?.push(task);
+  for (const id of STATUS_IDS) groups[id].sort(byPosition);
+  return groups;
+}
+
+/**
+ * Resolve the column an id belongs to. Ids are either a column id (the column
+ * droppable) or a task id (a sortable card).
+ */
+export function containerOf(id: string, tasks: Task[]): TaskStatus | null {
+  if (isStatusId(id)) return id;
+  return tasks.find((t) => t.id === id)?.status ?? null;
+}
+
+/**
+ * Compute a fractional position that places a card between two neighbours in a
+ * column. Pass the position of the card that will sit above / below the drop
+ * slot (or null when dropping at an edge).
+ */
+export function positionBetween(
+  before: number | null,
+  after: number | null,
+): number {
+  if (before == null && after == null) return POSITION_STEP;
+  if (before == null) return (after as number) - POSITION_STEP;
+  if (after == null) return before + POSITION_STEP;
+  return (before + after) / 2;
+}
+
+export interface Placement {
+  status: TaskStatus;
+  position: number;
+}
+
+/**
+ * Where `activeId` lands when dropped on `overId`. `placeAfter` picks the side
+ * of a hovered card the slot opens on; it is ignored when hovering a column's
+ * empty space, which always appends. Returns null if the column can't be
+ * resolved.
+ */
+export function planPlacement(
+  tasks: Task[],
+  activeId: string,
+  overId: string,
+  placeAfter: boolean,
+): Placement | null {
+  const status = containerOf(overId, tasks);
+  if (!status) return null;
+
+  const column = tasks
+    .filter((t) => t.status === status && t.id !== activeId)
+    .sort(byPosition);
+
+  let index = column.length;
+  if (!isStatusId(overId)) {
+    const overIndex = column.findIndex((t) => t.id === overId);
+    if (overIndex >= 0) index = overIndex + (placeAfter ? 1 : 0);
+  }
+
+  return {
+    status,
+    position: positionBetween(
+      column[index - 1]?.position ?? null,
+      column[index]?.position ?? null,
+    ),
+  };
+}
+
+/** True when the dragged card's centre sits past the centre of what it's over. */
+export function isPlacedAfter(event: {
+  active: Active;
+  over: Over | null;
+}): boolean {
+  const activeRect = event.active.rect.current.translated;
+  const overRect = event.over?.rect;
+  if (!activeRect || !overRect) return false;
+  return (
+    activeRect.top + activeRect.height / 2 > overRect.top + overRect.height / 2
+  );
+}
+
+/** Task title stashed on the draggable, for screen-reader announcements. */
+export function dragTitle(active: Active): string {
+  const title = active.data.current?.title;
+  return typeof title === "string" ? `"${title}"` : "Task";
+}
+
+/** Column that a drop target belongs to, read from its dnd-kit data payload. */
+export function dragStatus(over: Over | null): TaskStatus | null {
+  const status = over?.data.current?.status;
+  return typeof status === "string" && isStatusId(status) ? status : null;
+}
