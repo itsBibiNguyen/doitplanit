@@ -40,6 +40,8 @@ import {
 import { useAuth } from "@/lib/hooks/useAuth";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AlertIcon, CloseIcon } from "@/components/icons";
+import { BoardCanvas } from "./BoardCanvas";
+import { BoardSkeleton } from "./BoardSkeleton";
 import { Column } from "./Column";
 import { SetupNotice } from "./SetupNotice";
 import { TaskCard } from "./TaskCard";
@@ -293,6 +295,11 @@ export function Board() {
     [],
   );
 
+  // The board stays in skeleton form from first paint until the guest session
+  // is up *and* the first fetch has landed, so columns never flash empty.
+  const isBooting =
+    authStatus === "loading" || loadState === "idle" || loadState === "loading";
+
   if (authStatus === "unconfigured") {
     return (
       <Shell>
@@ -317,6 +324,8 @@ export function Board() {
             message={loadError?.message ?? "Could not load your tasks."}
             onRetry={() => void fetchTasks()}
           />
+        ) : isBooting ? (
+          <BoardSkeleton />
         ) : (
           <DndContext
             sensors={sensors}
@@ -388,26 +397,24 @@ function BoardColumns({
   onAddTask: (status: TaskStatus) => void;
 }) {
   return (
-    <div className="dp-scroll flex-1 overflow-x-auto">
-      <div className="mx-auto flex h-full min-h-[70vh] w-full max-w-[1600px] gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        {TASK_STATUSES.map((col, i) => (
-          <div
-            key={col.id}
-            className="dp-column-in h-full"
-            style={{ animationDelay: `${i * 60}ms` }}
-          >
-            <Column
-              status={col.id}
-              label={col.label}
-              tasks={tasksByStatus[col.id]}
-              isDropTarget={overStatus === col.id}
-              onOpenTask={onOpenTask}
-              onAddTask={onAddTask}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
+    <BoardCanvas>
+      {TASK_STATUSES.map((col, i) => (
+        <div
+          key={col.id}
+          className="dp-column-in h-full"
+          style={{ animationDelay: `${i * 60}ms` }}
+        >
+          <Column
+            status={col.id}
+            label={col.label}
+            tasks={tasksByStatus[col.id]}
+            isDropTarget={overStatus === col.id}
+            onOpenTask={onOpenTask}
+            onAddTask={onAddTask}
+          />
+        </div>
+      ))}
+    </BoardCanvas>
   );
 }
 

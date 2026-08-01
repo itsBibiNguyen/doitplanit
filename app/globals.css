@@ -25,6 +25,10 @@
   --prio-normal: #0d9488;
   --prio-high: #e11d48;
 
+  /* Loading placeholders */
+  --skeleton: #e3e8ee;
+  --skeleton-sheen: #f2f5f8;
+
   /* Elevation */
   --shadow-card: 0 1px 2px rgba(11, 15, 20, 0.06),
     0 1px 3px rgba(11, 15, 20, 0.04);
@@ -121,9 +125,35 @@ body {
   animation: dp-fade-in 0.2s ease-out both;
 }
 
+/* Loading placeholder bars: a slow sheen travelling across a flat tint. */
+@keyframes dp-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.dp-skeleton {
+  border-radius: 999px;
+  background-color: var(--skeleton);
+  background-image: linear-gradient(
+    90deg,
+    transparent 20%,
+    var(--skeleton-sheen) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: dp-shimmer 1.6s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dp-column-in,
   .dp-fade-in {
     animation: none;
+  }
+  .dp-skeleton {
+    animation: none;
+    background-image: none;
   }
 }
