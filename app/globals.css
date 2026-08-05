@@ -25,6 +25,12 @@
   --prio-normal: #0d9488;
   --prio-high: #e11d48;
 
+  /* Feedback: failures and degraded (offline) states */
+  --danger: #e11d48;
+  --danger-soft: #fdeaee;
+  --warn: #b45309;
+  --warn-soft: #fdf2e3;
+
   /* Loading placeholders */
   --skeleton: #e3e8ee;
   --skeleton-sheen: #f2f5f8;
@@ -54,6 +60,10 @@
   --color-prio-low: var(--prio-low);
   --color-prio-normal: var(--prio-normal);
   --color-prio-high: var(--prio-high);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
 
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), Georgia, serif;
@@ -125,6 +135,21 @@ body {
   animation: dp-fade-in 0.2s ease-out both;
 }
 
+/* Toasts rise from the bottom edge as they enter. */
+@keyframes dp-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.dp-toast-in {
+  animation: dp-toast-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Loading placeholder bars: a slow sheen travelling across a flat tint. */
 @keyframes dp-shimmer {
   from {
@@ -149,7 +174,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .dp-column-in,
-  .dp-fade-in {
+  .dp-fade-in,
+  .dp-toast-in {
     animation: none;
   }
   .dp-skeleton {

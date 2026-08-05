@@ -16,6 +16,8 @@ interface ColumnProps {
   label: string;
   tasks: Task[];
   isDropTarget?: boolean;
+  /** True while any card on the board is being dragged. */
+  isDragActive?: boolean;
   onOpenTask?: (task: Task) => void;
   onAddTask?: (status: TaskStatus) => void;
 }
@@ -25,6 +27,7 @@ export function Column({
   label,
   tasks,
   isDropTarget,
+  isDragActive,
   onOpenTask,
   onAddTask,
 }: ColumnProps) {
@@ -65,7 +68,13 @@ export function Column({
           className="dp-scroll flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2"
         >
           {tasks.length === 0 ? (
-            <EmptyColumn label={label} onAddTask={() => onAddTask?.(status)} />
+            <EmptyColumn
+              status={status}
+              label={label}
+              isDragActive={isDragActive}
+              isDropTarget={isDropTarget}
+              onAddTask={() => onAddTask?.(status)}
+            />
           ) : (
             tasks.map((task) => (
               <SortableTaskCard
@@ -81,23 +90,61 @@ export function Column({
   );
 }
 
+const EMPTY_HEADLINE: Record<TaskStatus, string> = {
+  todo: "Nothing queued up",
+  in_progress: "Nothing in flight",
+  in_review: "Nothing waiting on review",
+  done: "Nothing finished yet",
+};
+
+const placeholderClass =
+  "mt-1 flex min-h-[140px] flex-1 flex-col items-center justify-center gap-2 rounded-[var(--radius-card)] border border-dashed px-3 py-8 text-center transition-colors";
+
 function EmptyColumn({
+  status,
   label,
+  isDragActive,
+  isDropTarget,
   onAddTask,
 }: {
+  status: TaskStatus;
   label: string;
+  isDragActive?: boolean;
+  isDropTarget?: boolean;
   onAddTask: () => void;
 }) {
+  // Mid-drag the slot reads as a landing zone instead of a button, so the
+  // card in flight has an obvious place to go.
+  if (isDragActive) {
+    return (
+      <div
+        className={cn(
+          placeholderClass,
+          isDropTarget
+            ? "border-accent bg-accent-soft/60 text-accent"
+            : "border-border-strong/70 text-ink-muted",
+        )}
+      >
+        <InboxIcon className="h-6 w-6" />
+        <span className="text-xs font-medium">
+          {isDropTarget ? `Drop into ${label}` : "Drop a card here"}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={onAddTask}
-      className="mt-1 flex flex-col items-center gap-2 rounded-[var(--radius-card)] border border-dashed border-border-strong/70 bg-surface/40 px-3 py-8 text-center text-ink-muted transition-colors hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
+      aria-label={`Add a task to ${label}`}
+      className={cn(
+        placeholderClass,
+        "border-border-strong/70 bg-surface/40 text-ink-muted hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]",
+      )}
     >
       <InboxIcon className="h-6 w-6" />
-      <span className="text-xs font-medium">
-        Nothing in {label.toLowerCase()} yet
-      </span>
+      <span className="text-xs font-medium">{EMPTY_HEADLINE[status]}</span>
       <span className="text-xs">Click to add a task</span>
     </button>
   );

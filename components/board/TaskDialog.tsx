@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/types";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
-import { TrashIcon } from "@/components/icons";
+import { toAppError, type AppError } from "@/lib/errors";
+import { AlertIcon, TrashIcon } from "@/components/icons";
 
 export interface TaskDialogState {
   mode: "create" | "edit";
@@ -49,6 +50,17 @@ function draftFromState(state: TaskDialogState | null): TaskDraft {
   };
 }
 
+/**
+ * Identity of the dialog's contents. Callers pass this as `key` so opening a
+ * different task mounts a fresh form instead of carrying over a stale draft.
+ */
+export function taskDialogKey(state: TaskDialogState | null): string {
+  if (!state) return "closed";
+  return state.mode === "edit"
+    ? `edit-${state.task?.id}`
+    : `create-${state.defaultStatus ?? "todo"}`;
+}
+
 export function TaskDialog({
   state,
   onClose,
@@ -59,14 +71,7 @@ export function TaskDialog({
   const [draft, setDraft] = useState<TaskDraft>(() => draftFromState(state));
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDraft(draftFromState(state));
-    setError(null);
-    setSubmitting(false);
-    setDeleting(false);
-  }, [state]);
+  const [error, setError] = useState<AppError | null>(null);
 
   const isEdit = state?.mode === "edit";
   const titleValid = draft.title.trim().length > 0;
@@ -84,7 +89,8 @@ export function TaskDialog({
       }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the task.");
+      // The dialog stays open with the draft intact so the save can be retried.
+      setError(toAppError(err));
       setSubmitting(false);
     }
   }
@@ -97,7 +103,7 @@ export function TaskDialog({
       await onDelete(state.task.id);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the task.");
+      setError(toAppError(err));
       setDeleting(false);
     }
   }
@@ -116,7 +122,7 @@ export function TaskDialog({
               type="button"
               onClick={handleDelete}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium text-prio-high transition-colors hover:bg-prio-high/10 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger-soft disabled:opacity-50"
             >
               <TrashIcon className="h-4 w-4" />
               {deleting ? "Deleting…" : "Delete"}
@@ -223,9 +229,20 @@ export function TaskDialog({
         </div>
 
         {error ? (
-          <p className="rounded-[var(--radius-sm)] bg-prio-high/10 px-3 py-2 text-sm text-prio-high">
-            {error}
-          </p>
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-[var(--radius-sm)] bg-danger-soft px-3 py-2.5 text-sm text-danger"
+          >
+            <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-medium">{error.message}</p>
+              {error.hint ? (
+                <p className="mt-0.5 leading-relaxed text-danger/80">
+                  {error.hint}
+                </p>
+              ) : null}
+            </div>
+          </div>
         ) : null}
       </form>
     </Modal>
@@ -248,7 +265,7 @@ function Field({
     <label className="block">
       <span className="mb-1.5 block text-xs font-medium text-ink-soft">
         {label}
-        {required ? <span className="text-prio-high"> *</span> : null}
+        {required ? <span className="text-danger"> *</span> : null}
       </span>
       {children}
     </label>

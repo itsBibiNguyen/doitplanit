@@ -75,6 +75,23 @@ export const AlertIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const RefreshIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M20 11a8 8 0 0 0-13.7-5.3L3 9" />
+    <path d="M4 13a8 8 0 0 0 13.7 5.3L21 15" />
+    <path d="M3 4v5h5M21 20v-5h-5" />
+  </Icon>
+);
+
+export const WifiOffIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M2 3l20 18" />
+    <path d="M5 12.5a11 11 0 0 1 4-2.4M1.5 8.5a16 16 0 0 1 5-3.1M12 4a16 16 0 0 1 10.5 4.5M18.5 12.5a11 11 0 0 0-2.6-1.8" />
+    <path d="M8.5 16a6 6 0 0 1 7-1" />
+    <path d="M12 20h.01" />
+  </Icon>
+);
+
 export const InboxIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M3 12h5l2 3h4l2-3h5" />

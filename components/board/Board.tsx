@@ -29,6 +29,7 @@ import {
   isPlacedAfter,
   planPlacement,
   positionBetween,
+  type Placement,
 } from "@/lib/board";
 import {
   createTask,
@@ -37,17 +38,42 @@ import {
   moveTask,
   updateTask,
 } from "@/lib/supabase/tasks";
+import { isOnline, toAppError, type AppError } from "@/lib/errors";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useOnline } from "@/lib/hooks/useOnline";
+import { useToasts } from "@/lib/hooks/useToasts";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { AlertIcon, CloseIcon } from "@/components/icons";
+import { Toaster } from "@/components/ui/Toaster";
 import { BoardCanvas } from "./BoardCanvas";
+import { BoardError } from "./BoardError";
 import { BoardSkeleton } from "./BoardSkeleton";
 import { Column } from "./Column";
+import { ConnectionBanner } from "./ConnectionBanner";
+import { EmptyBoard } from "./EmptyBoard";
 import { SetupNotice } from "./SetupNotice";
 import { TaskCard } from "./TaskCard";
-import { TaskDialog, type TaskDialogState, type TaskDraft } from "./TaskDialog";
+import {
+  TaskDialog,
+  taskDialogKey,
+  type TaskDialogState,
+  type TaskDraft,
+} from "./TaskDialog";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
+
+interface FetchOptions {
+  /** Refresh in place: keep the current board up and report failures as a toast. */
+  background?: boolean;
+}
+
+/** Resolves to whether the board is now showing fresh data. */
+type FetchTasks = (options?: FetchOptions) => Promise<boolean>;
+
+type CommitMove = (
+  id: string,
+  placement: Placement,
+  revertTo: Task[],
+) => Promise<void>;
 
 const dropAnimation: DropAnimation = {
   sideEffects: defaultDropAnimationSideEffects({
@@ -57,10 +83,12 @@ const dropAnimation: DropAnimation = {
 
 export function Board() {
   const { status: authStatus, userId, error: authError, retry } = useAuth();
+  const online = useOnline();
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
 
   const [tasks, setTasksState] = useState<Task[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("idle");
-  const [loadError, setLoadError] = useState<Error | null>(null);
+  const [loadError, setLoadError] = useState<AppError | null>(null);
   const [dialog, setDialog] = useState<TaskDialogState | null>(null);
 
   // Drag handlers fire between renders, so they read the board from a ref that
@@ -78,28 +106,94 @@ export function Board() {
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [overStatus, setOverStatus] = useState<TaskStatus | null>(null);
-  const [moveError, setMoveError] = useState<string | null>(null);
   /** Board as it looked when the drag began, so a failed move can be undone. */
   const dragSnapshot = useRef<Task[] | null>(null);
 
-  const fetchTasks = useCallback(async () => {
-    setLoadState("loading");
-    setLoadError(null);
-    try {
-      const data = await listTasks();
-      setTasks(data);
-      setLoadState("ready");
-    } catch (err) {
-      setLoadError(err instanceof Error ? err : new Error(String(err)));
-      setLoadState("error");
-    }
-  }, [setTasks]);
+  const warnOffline = useCallback(
+    (action: string) => {
+      pushToast({
+        key: "offline-action",
+        tone: "error",
+        title: "You're offline",
+        message: `Reconnect to ${action}.`,
+      });
+    },
+    [pushToast],
+  );
+
+  const fetchTasks: FetchTasks = useCallback(
+    (options: FetchOptions = {}) => {
+      // A named declaration so the failure toast can offer a retry that runs
+      // the very same attempt.
+      async function attempt({
+        background = false,
+      }: FetchOptions): Promise<boolean> {
+        if (!background) {
+          setLoadState("loading");
+          setLoadError(null);
+        }
+        try {
+          const data = await listTasks();
+          setTasks(data);
+          setLoadState("ready");
+          setLoadError(null);
+          return true;
+        } catch (err) {
+          const error = toAppError(err);
+          if (!background) {
+            setLoadError(error);
+            setLoadState("error");
+            return false;
+          }
+          pushToast({
+            key: "refresh",
+            tone: "error",
+            title: "Couldn't refresh the board",
+            message: [error.message, error.hint].filter(Boolean).join(" "),
+            action: error.retryable
+              ? {
+                  label: "Try again",
+                  onClick: () => void attempt({ background: true }),
+                }
+              : undefined,
+          });
+          return false;
+        }
+      }
+
+      return attempt(options);
+    },
+    [pushToast, setTasks],
+  );
 
   useEffect(() => {
     if (authStatus === "ready" && userId) {
       void fetchTasks();
     }
   }, [authStatus, userId, fetchTasks]);
+
+  // Coming back from an outage: pull the board up to date without throwing the
+  // reader back to a skeleton unless there was nothing on screen to begin with.
+  useEffect(() => {
+    if (authStatus !== "ready") return;
+
+    const onReconnect = () => {
+      const hadBoard = loadState === "ready";
+      void fetchTasks({ background: hadBoard }).then((fresh) => {
+        if (fresh && hadBoard) {
+          pushToast({
+            key: "connection",
+            tone: "success",
+            title: "Back online",
+            message: "The board is up to date.",
+          });
+        }
+      });
+    };
+
+    window.addEventListener("online", onReconnect);
+    return () => window.removeEventListener("online", onReconnect);
+  }, [authStatus, loadState, fetchTasks, pushToast]);
 
   useEffect(() => {
     document.body.classList.toggle("dp-dragging", activeTask !== null);
@@ -108,9 +202,16 @@ export function Board() {
 
   const tasksByStatus = useMemo(() => groupByStatus(tasks), [tasks]);
 
-  const handleNewTask = useCallback((status?: TaskStatus) => {
-    setDialog({ mode: "create", defaultStatus: status });
-  }, []);
+  const handleNewTask = useCallback(
+    (status?: TaskStatus) => {
+      if (!isOnline()) {
+        warnOffline("add tasks");
+        return;
+      }
+      setDialog({ mode: "create", defaultStatus: status });
+    },
+    [warnOffline],
+  );
 
   const handleOpenTask = useCallback((task: Task) => {
     setDialog({ mode: "edit", task });
@@ -170,13 +271,64 @@ export function Board() {
     }),
   );
 
+  /**
+   * Save a drop. The card is already where the user dropped it, so a failure
+   * has to put the board back the way it was and say so.
+   */
+  const commitMove: CommitMove = useCallback(
+    (id: string, placement: Placement, revertTo: Task[]) => {
+      // `revertTo` is re-read on each attempt: a retry has to undo against the
+      // board as it stands now, not as it stood when the drag started.
+      async function attempt(previous: Task[]): Promise<void> {
+        if (!isOnline()) {
+          setTasks(previous);
+          warnOffline("move cards");
+          return;
+        }
+
+        setTasks((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, ...placement } : t)),
+        );
+
+        try {
+          const saved = await moveTask(
+            id,
+            placement.status,
+            placement.position,
+          );
+          setTasks((prev) => prev.map((t) => (t.id === id ? saved : t)));
+        } catch (err) {
+          setTasks(previous);
+          const error = toAppError(err);
+          pushToast({
+            key: "move",
+            tone: "error",
+            title: "That move didn't stick",
+            message: `${error.message} The card is back where it started.`,
+            action: error.retryable
+              ? {
+                  label: "Try again",
+                  onClick: () => void attempt(tasksRef.current),
+                }
+              : {
+                  label: "Refresh board",
+                  onClick: () => void fetchTasks({ background: true }),
+                },
+          });
+        }
+      }
+
+      return attempt(revertTo);
+    },
+    [fetchTasks, pushToast, setTasks, warnOffline],
+  );
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const task = tasksRef.current.find((t) => t.id === event.active.id);
     if (!task) return;
     dragSnapshot.current = tasksRef.current;
     setActiveTask(task);
     setOverStatus(task.status);
-    setMoveError(null);
   }, []);
 
   // Cross-column hops are applied while dragging so the card previews in its
@@ -244,25 +396,9 @@ export function Board() {
         return;
       }
 
-      setTasks((prev) =>
-        prev.map((t) => (t.id === activeId ? { ...t, ...placement } : t)),
-      );
-
-      try {
-        const saved = await moveTask(
-          activeId,
-          placement.status,
-          placement.position,
-        );
-        setTasks((prev) => prev.map((t) => (t.id === activeId ? saved : t)));
-      } catch (err) {
-        setTasks(snapshot);
-        setMoveError(
-          err instanceof Error ? err.message : "Could not move that task.",
-        );
-      }
+      await commitMove(activeId, placement, snapshot);
     },
-    [setTasks],
+    [commitMove, setTasks],
   );
 
   const handleDragCancel = useCallback(() => {
@@ -311,21 +447,18 @@ export function Board() {
   return (
     <>
       <Shell
+        offline={!online}
         onNewTask={() => handleNewTask()}
-        newTaskDisabled={authStatus !== "ready"}
+        newTaskDisabled={authStatus !== "ready" || !online}
       >
         {authStatus === "error" ? (
-          <ErrorState
-            message={authError?.message ?? "Could not start your session."}
-            onRetry={retry}
-          />
-        ) : loadState === "error" ? (
-          <ErrorState
-            message={loadError?.message ?? "Could not load your tasks."}
-            onRetry={() => void fetchTasks()}
-          />
+          <BoardError error={toAppError(authError)} onRetry={retry} />
+        ) : loadState === "error" && loadError ? (
+          <BoardError error={loadError} onRetry={() => void fetchTasks()} />
         ) : isBooting ? (
           <BoardSkeleton />
+        ) : tasks.length === 0 ? (
+          <EmptyBoard onCreateTask={() => handleNewTask("todo")} />
         ) : (
           <DndContext
             sensors={sensors}
@@ -340,6 +473,7 @@ export function Board() {
             <BoardColumns
               tasksByStatus={tasksByStatus}
               overStatus={overStatus}
+              isDragActive={activeTask !== null}
               onOpenTask={handleOpenTask}
               onAddTask={handleNewTask}
             />
@@ -350,14 +484,10 @@ export function Board() {
         )}
       </Shell>
 
-      {moveError ? (
-        <MoveErrorToast
-          message={moveError}
-          onDismiss={() => setMoveError(null)}
-        />
-      ) : null}
+      <Toaster toasts={toasts} onDismiss={dismissToast} />
 
       <TaskDialog
+        key={taskDialogKey(dialog)}
         state={dialog}
         onClose={() => setDialog(null)}
         onCreate={handleCreate}
@@ -370,16 +500,19 @@ export function Board() {
 
 function Shell({
   children,
+  offline,
   onNewTask,
   newTaskDisabled,
 }: {
   children: React.ReactNode;
+  offline?: boolean;
   onNewTask?: () => void;
   newTaskDisabled?: boolean;
 }) {
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeader onNewTask={onNewTask} newTaskDisabled={newTaskDisabled} />
+      {offline ? <ConnectionBanner /> : null}
       <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
     </div>
   );
@@ -388,11 +521,13 @@ function Shell({
 function BoardColumns({
   tasksByStatus,
   overStatus,
+  isDragActive,
   onOpenTask,
   onAddTask,
 }: {
   tasksByStatus: Record<TaskStatus, Task[]>;
   overStatus: TaskStatus | null;
+  isDragActive: boolean;
   onOpenTask: (task: Task) => void;
   onAddTask: (status: TaskStatus) => void;
 }) {
@@ -409,64 +544,12 @@ function BoardColumns({
             label={col.label}
             tasks={tasksByStatus[col.id]}
             isDropTarget={overStatus === col.id}
+            isDragActive={isDragActive}
             onOpenTask={onOpenTask}
             onAddTask={onAddTask}
           />
         </div>
       ))}
     </BoardCanvas>
-  );
-}
-
-function MoveErrorToast({
-  message,
-  onDismiss,
-}: {
-  message: string;
-  onDismiss: () => void;
-}) {
-  return (
-    <div
-      role="status"
-      className="dp-fade-in fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-start gap-3 rounded-[var(--radius-card)] border border-prio-high/30 bg-surface px-4 py-3 shadow-[var(--shadow-panel)]"
-    >
-      <AlertIcon className="mt-0.5 h-4 w-4 shrink-0 text-prio-high" />
-      <div className="flex-1 text-sm">
-        <p className="font-medium text-ink">Move didn&apos;t stick</p>
-        <p className="mt-0.5 text-ink-soft">
-          {message} The card was put back.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label="Dismiss"
-        className="-mr-1 -mt-1 rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)]"
-      >
-        <CloseIcon className="h-4 w-4" />
-      </button>
-    </div>
-  );
-}
-
-function ErrorState({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="mx-auto flex max-w-md flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-      <h2 className="text-lg font-semibold text-ink">Something went wrong</h2>
-      <p className="text-sm text-ink-soft">{message}</p>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="rounded-[var(--radius-sm)] bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-      >
-        Try again
-      </button>
-    </div>
   );
 }

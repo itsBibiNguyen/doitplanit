@@ -11,6 +11,7 @@ Built with Next.js, Supabase, and TypeScript.
 - **Full task detail.** Title, description, priority (low / normal / high), due date, and status, all editable from a single dialog.
 - **Due-date awareness.** Dates are color-coded as overdue, due today, or upcoming.
 - **Responsive.** Columns scroll horizontally on narrow screens with a sticky header.
+- **Honest about failure.** Losing connection shows a banner instead of breaking the board, a drop that can't be saved slides back with a retry, and every error message says what to do next rather than echoing a Postgres code.
 
 ## Tech stack
 
@@ -105,16 +106,23 @@ app/
   layout.tsx          Fonts, metadata, root shell
   globals.css         Design tokens and animations
   page.tsx            Renders the board
+  error.tsx           Recoverable fallback for render-time crashes
+  global-error.tsx    Last resort when the root layout itself fails
 components/
-  board/              Board, Column, TaskCard, TaskDialog, SetupNotice
+  board/              Board, Column, TaskCard, TaskDialog, SetupNotice,
+                      BoardError, ConnectionBanner, skeletons, empty states
   layout/AppHeader    Branded header with the new-task action
   ui/Modal            Accessible modal primitive
+  ui/Toaster          Transient failure and recovery messages
   icons.tsx           Shared icon set
 lib/
   supabase/client     Singleton browser client
   supabase/auth       Anonymous session bootstrap
   supabase/tasks      Task queries and position helpers
   hooks/useAuth       Session state for components
+  hooks/useOnline     Browser connectivity
+  hooks/useToasts     Toast queue
+  errors.ts           Turns thrown errors into actionable messages
   types.ts            Shared task types
   utils.ts            Class names and due-date formatting
 supabase/
@@ -126,6 +134,14 @@ supabase/
 The interface avoids default-template aesthetics in favor of a Linear-inspired direction: a cool slate canvas (`#F4F6F8`) against near-black ink (`#0B0F14`), with a single teal accent (`#0D9488`) reserved for primary actions, focus rings, and normal-priority cues. Type pairs **DM Sans** for the interface with **Fraunces** for the wordmark.
 
 All colors, shadows, and radii are CSS variables in `app/globals.css` and exposed to Tailwind via `@theme`, so retuning the palette is a single-file change. Motion is kept subtle — a staggered column entrance and soft card elevation — and respects `prefers-reduced-motion`.
+
+### States and recovery
+
+- **Loading.** Skeleton columns hold the layout until the guest session and the first fetch have both landed, so nothing flashes empty.
+- **Empty.** A brand-new board gets a single blank-slate panel; once there's work, individual columns show their own prompt, which becomes a labelled drop zone mid-drag.
+- **Offline.** A banner appears under the header, adding and moving are held back with an explanation, and the board refreshes itself when the connection returns.
+- **Failed saves.** A drop that can't be persisted puts the card back and offers a retry; a dialog save that fails keeps the draft on screen so it can be tried again.
+- **Unrecoverable.** Missing tables, disabled anonymous sign-in, and expired sessions each get their own message naming the fix, rather than a raw Postgres or auth code.
 
 ## Scripts
 
@@ -142,8 +158,10 @@ npm run lint    # ESLint
 - [x] Anonymous guest sessions
 - [x] Four-column board with live data
 - [x] Create, edit, and delete tasks
-- [ ] Drag-and-drop between columns with optimistic updates
-- [ ] Loading skeletons during auth and fetch
+- [x] Drag-and-drop between columns with optimistic updates
+- [x] Loading skeletons during auth and fetch
+- [x] Empty-board and empty-column states
+- [x] Offline, auth, and failed-save recovery
 - [ ] Deploy to Vercel
 
 ## Deployment

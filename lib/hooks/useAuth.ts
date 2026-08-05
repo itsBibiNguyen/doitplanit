@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { ensureSession } from "@/lib/supabase/auth";
@@ -27,15 +27,20 @@ export function useAuth(): AuthState {
   const [error, setError] = useState<Error | null>(null);
   const [attempt, setAttempt] = useState(0);
 
-  useEffect(() => {
-    if (!isSupabaseConfigured) {
-      setStatus("unconfigured");
-      return;
-    }
-
-    let cancelled = false;
+  // Reset to loading here rather than in the effect, so a retry shows progress
+  // the moment it's clicked.
+  const retry = useCallback(() => {
+    if (!isSupabaseConfigured) return;
     setStatus("loading");
     setError(null);
+    setAttempt((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    // Status starts out "unconfigured" in that case, so there's nothing to do.
+    if (!isSupabaseConfigured) return;
+
+    let cancelled = false;
 
     ensureSession()
       .then((s) => {
@@ -68,6 +73,6 @@ export function useAuth(): AuthState {
     session,
     userId: session?.user?.id ?? null,
     error,
-    retry: () => setAttempt((n) => n + 1),
+    retry,
   };
 }
