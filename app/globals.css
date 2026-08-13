@@ -34,7 +34,7 @@
   /* Status chart (distinct from priority pips and from each other) */
   --status-todo: #64748b;
   --status-progress: #fafa33;
-  --status-review: #fac533;
+  --status-review: #fab907;
   --status-done: #059669;
 
   /* Loading placeholders */
