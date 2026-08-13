@@ -12,6 +12,7 @@ Built with Next.js, Supabase, and TypeScript.
 - **Due-date awareness.** Dates show as filled chips for overdue, today, soon (1–3 days), or upcoming.
 - **Labels.** Color chips on cards, a picker in the task dialog, and header filters that match tasks with every selected label.
 - **Comments.** A chronological thread on each task, loaded when you open it — posting stays in the dialog so you can keep going.
+- **Activity.** Moves, title, priority, due date, and label changes are logged by the database (including drag-and-drop) and shown newest-first next to comments.
 - **Search and filters.** Title search, priority chips, and label chips hide cards in place; dragging still uses the full board so a drop cannot skip a hidden card.
 - **Board at a glance.** A header button opens a summary panel with total, done, and overdue counts plus a status chart — always from the unfiltered list, closed by default so it does not steal column width.
 - **Responsive.** Columns scroll horizontally on narrow screens with a sticky header.
@@ -65,6 +66,7 @@ In the Supabase dashboard, open **SQL Editor → New query**, then paste and run
 1. [`supabase/migrations/001_tasks.sql`](supabase/migrations/001_tasks.sql) — `tasks` table, indexes, and RLS.
 2. [`supabase/migrations/002_labels.sql`](supabase/migrations/002_labels.sql) — `labels` and `task_labels`, plus RLS.
 3. [`supabase/migrations/003_comments.sql`](supabase/migrations/003_comments.sql) — `comments` table and RLS.
+4. [`supabase/migrations/004_activity.sql`](supabase/migrations/004_activity.sql) — `task_activity` table, RLS, and triggers.
 
 Each script is safe to re-run.
 
@@ -125,13 +127,27 @@ The `comments` table:
 
 Inserts are allowed only when the caller also owns the parent task. There is no update or delete from the client in this pass.
 
+The `task_activity` table:
+
+| Column       | Type          | Notes                                              |
+| ------------ | ------------- | -------------------------------------------------- |
+| `id`         | `uuid`        | Primary key                                        |
+| `task_id`    | `uuid`        | FK to `tasks`, cascades on task delete             |
+| `user_id`    | `uuid`        | Owner of the parent task                           |
+| `action`     | `text`        | `created` · `status_changed` · `title_changed` · `priority_changed` · `due_date_changed` · `label_added` · `label_removed` |
+| `from_value` | `text`        | Previous value (status id, title, label name, …)   |
+| `to_value`   | `text`        | New value                                          |
+| `created_at` | `timestamptz` | Defaults to `now()`                                |
+
+Rows are inserted by database triggers on `tasks` and `task_labels` — the client never writes this table. Description-only edits and same-column reorders are not logged.
+
 ### Ordering
 
 `position` is a `numeric` rather than an integer so a card can be dropped between two neighbours by averaging their positions, with no need to renumber the rest of the column. New tasks are appended with a gap of 1000.
 
 ### Security
 
-RLS is enabled on `tasks`, `labels`, `task_labels`, and `comments` with policies that require `auth.uid() = user_id`. A user can only ever read or modify their own rows.
+RLS is enabled on `tasks`, `labels`, `task_labels`, `comments`, and `task_activity` with policies that require `auth.uid() = user_id`. A user can only ever read or modify their own rows. `task_activity` is select-only from the client; inserts come from triggers.
 
 ## Project structure
 
@@ -144,8 +160,8 @@ app/
   global-error.tsx    Last resort when the root layout itself fails
 components/
   board/              Board, Column, TaskCard, TaskDialog, CommentThread,
-                      SetupNotice, BoardError, ConnectionBanner, skeletons,
-                      empty states
+                      ActivityFeed, SetupNotice, BoardError, ConnectionBanner,
+                      skeletons, empty states
   layout/AppHeader    Branded header with search, filters, and new-task
   ui/Modal            Accessible modal primitive
   ui/Toaster          Transient failure and recovery messages
@@ -156,11 +172,12 @@ lib/
   supabase/tasks      Task queries and position helpers
   supabase/labels     Label queries and task–label assignment
   supabase/comments   Comment list and create helpers
+  supabase/activity   Activity list helper (read-only; writes are triggers)
   hooks/useAuth       Session state for components
   hooks/useOnline     Browser connectivity
   hooks/useToasts     Toast queue
   errors.ts           Turns thrown errors into actionable messages
-  types.ts            Shared task, label, and comment types
+  types.ts            Shared task, label, comment, and activity types
   utils.ts            Class names, due-date, and timestamp formatting
   board.ts            Column grouping, filters, and placement math
 supabase/
@@ -206,6 +223,7 @@ npm run lint    # ESLint
 - [x] On-demand board summary panel
 - [x] Labels / tags with card chips and board filters
 - [x] Task comments
+- [x] Task activity log
 
 ## Deployment
 

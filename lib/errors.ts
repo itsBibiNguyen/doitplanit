@@ -167,10 +167,20 @@ function mentionsComments(raw: string, details: string): boolean {
   return /\bcomments\b/i.test(`${raw} ${details}`);
 }
 
+function mentionsActivity(raw: string, details: string): boolean {
+  return /\btask_activity\b/i.test(`${raw} ${details}`);
+}
+
 function missingSchema(
   raw: string,
   details: string,
 ): { message: string; hint: string } {
+  if (mentionsActivity(raw, details)) {
+    return {
+      message: "The activity table doesn't exist yet.",
+      hint: "Run supabase/migrations/004_activity.sql in the Supabase SQL editor.",
+    };
+  }
   if (mentionsComments(raw, details)) {
     return {
       message: "The comments table doesn't exist yet.",

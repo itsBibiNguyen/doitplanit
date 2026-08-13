@@ -6,10 +6,16 @@ import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/types";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import { toAppError, type AppError } from "@/lib/errors";
-import { AlertIcon, TrashIcon } from "@/components/icons";
+import {
+  ActivityIcon,
+  AlertIcon,
+  CommentIcon,
+  TrashIcon,
+} from "@/components/icons";
 import { DueDateChip } from "@/components/board/DueDateChip";
 import { LabelPicker } from "@/components/board/LabelPicker";
 import { CommentThread } from "@/components/board/CommentThread";
+import { ActivityFeed } from "@/components/board/ActivityFeed";
 
 export interface TaskDialogState {
   mode: "create" | "edit";
@@ -82,9 +88,17 @@ export function TaskDialog({
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
+  const [tab, setTab] = useState<"comments" | "activity">("comments");
+  const [activitySeen, setActivitySeen] = useState(false);
 
   const isEdit = state?.mode === "edit";
   const titleValid = draft.title.trim().length > 0;
+
+  function selectTab(next: "comments" | "activity") {
+    setTab(next);
+    setError(null);
+    if (next === "activity") setActivitySeen(true);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -269,11 +283,58 @@ export function TaskDialog({
       </form>
 
       {isEdit && state?.task ? (
-        <CommentThread
-          taskId={state.task.id}
-          disabled={busy}
-          onError={(err) => setError(err)}
-        />
+        <div className="mt-4 border-t border-border pt-3">
+          <div
+            role="tablist"
+            aria-label="Comments and activity"
+            className="mb-3 flex gap-1 rounded-[var(--radius-sm)] bg-surface-2 p-0.5"
+          >
+            <TabButton
+              id="task-tab-comments"
+              controls="task-panel-comments"
+              selected={tab === "comments"}
+              onClick={() => selectTab("comments")}
+              icon={<CommentIcon className="h-3.5 w-3.5" />}
+            >
+              Comments
+            </TabButton>
+            <TabButton
+              id="task-tab-activity"
+              controls="task-panel-activity"
+              selected={tab === "activity"}
+              onClick={() => selectTab("activity")}
+              icon={<ActivityIcon className="h-3.5 w-3.5" />}
+            >
+              Activity
+            </TabButton>
+          </div>
+          <div
+            role="tabpanel"
+            hidden={tab !== "comments"}
+            id="task-panel-comments"
+            aria-labelledby="task-tab-comments"
+          >
+            <CommentThread
+              taskId={state.task.id}
+              disabled={busy}
+              onError={(err) => setError(err)}
+            />
+          </div>
+          {activitySeen ? (
+            <div
+              role="tabpanel"
+              hidden={tab !== "activity"}
+              id="task-panel-activity"
+              aria-labelledby="task-tab-activity"
+            >
+              <ActivityFeed
+                taskId={state.task.id}
+                labels={labels}
+                onError={(err) => setError(err)}
+              />
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </Modal>
   );
@@ -299,5 +360,41 @@ function Field({
       </span>
       {children}
     </label>
+  );
+}
+
+function TabButton({
+  id,
+  controls,
+  selected,
+  onClick,
+  icon,
+  children,
+}: {
+  id: string;
+  controls: string;
+  selected: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={id}
+      aria-controls={controls}
+      aria-selected={selected}
+      onClick={onClick}
+      className={cn(
+        "inline-flex flex-1 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors",
+        selected
+          ? "bg-surface text-ink shadow-sm"
+          : "text-ink-soft hover:text-ink",
+      )}
+    >
+      {icon}
+      {children}
+    </button>
   );
 }

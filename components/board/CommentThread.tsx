@@ -5,7 +5,6 @@ import type { Comment } from "@/lib/types";
 import { addComment, listComments } from "@/lib/supabase/comments";
 import { toAppError, type AppError } from "@/lib/errors";
 import { formatRelativeTime } from "@/lib/utils";
-import { CommentIcon } from "@/components/icons";
 
 const MAX_BODY = 2000;
 
@@ -66,15 +65,7 @@ export function CommentThread({
   }
 
   return (
-    <section className="mt-4 border-t border-border pt-4">
-      <h3 className="mb-3 flex items-center gap-1.5 text-xs font-medium text-ink-soft">
-        <CommentIcon className="h-3.5 w-3.5" />
-        Comments
-        {!loading ? (
-          <span className="font-normal text-ink-muted">({comments.length})</span>
-        ) : null}
-      </h3>
-
+    <section>
       {loading ? (
         <p className="mb-3 text-sm text-ink-muted">Loading comments…</p>
       ) : comments.length === 0 ? (

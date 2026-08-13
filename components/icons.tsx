@@ -118,3 +118,10 @@ export const CommentIcon = (props: IconProps) => (
     <path d="M7 17.5 4 21V6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H7z" />
   </Icon>
 );
+
+export const ActivityIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 8v4.5l3 1.5" />
+  </Icon>
+);

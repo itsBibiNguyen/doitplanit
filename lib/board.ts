@@ -1,7 +1,12 @@
 import type { Active, Over } from "@dnd-kit/core";
-import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
-import { TASK_STATUSES } from "@/lib/types";
-import { dueState } from "@/lib/utils";
+import type {
+  Task,
+  TaskActivity,
+  TaskPriority,
+  TaskStatus,
+} from "@/lib/types";
+import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/types";
+import { dueState, formatDueDate } from "@/lib/utils";
 
 /** Gap between task positions; leaves room to insert between neighbours. */
 export const POSITION_STEP = 1000;
@@ -12,11 +17,59 @@ export const STATUS_LABEL = Object.fromEntries(
   TASK_STATUSES.map((s) => [s.id, s.label]),
 ) as Record<TaskStatus, string>;
 
-const byPosition = (a: Task, b: Task) => a.position - b.position;
+export const PRIORITY_LABEL = Object.fromEntries(
+  TASK_PRIORITIES.map((p) => [p.id, p.label]),
+) as Record<TaskPriority, string>;
 
 export function isStatusId(value: string): value is TaskStatus {
   return (STATUS_IDS as string[]).includes(value);
 }
+
+export function prettyStatus(value: string | null): string {
+  if (!value) return "None";
+  return isStatusId(value) ? STATUS_LABEL[value] : value;
+}
+
+function prettyPriority(value: string | null): string {
+  if (!value) return "None";
+  return value in PRIORITY_LABEL
+    ? PRIORITY_LABEL[value as TaskPriority]
+    : value;
+}
+
+/** One-line copy for an activity row, without the relative timestamp. */
+export function formatActivityCopy(row: TaskActivity): string {
+  switch (row.action) {
+    case "created":
+      return "Created";
+    case "status_changed":
+      return `Moved from ${prettyStatus(row.from_value)} → ${prettyStatus(row.to_value)}`;
+    case "title_changed":
+      return `Title changed from “${row.from_value ?? ""}” → “${row.to_value ?? ""}”`;
+    case "priority_changed":
+      return `Priority changed from ${prettyPriority(row.from_value)} → ${prettyPriority(row.to_value)}`;
+    case "due_date_changed": {
+      const from = formatDueDate(row.from_value);
+      const to = formatDueDate(row.to_value);
+      if (from && to) return `Due date changed from ${from} → ${to}`;
+      if (to) return `Due date set to ${to}`;
+      if (from) return `Due date cleared (was ${from})`;
+      return "Due date cleared";
+    }
+    case "label_added":
+      return row.to_value ? `Added label ${row.to_value}` : "Added a label";
+    case "label_removed":
+      return row.from_value
+        ? `Removed label ${row.from_value}`
+        : "Removed a label";
+    default: {
+      const _exhaustive: never = row.action;
+      return _exhaustive;
+    }
+  }
+}
+
+const byPosition = (a: Task, b: Task) => a.position - b.position;
 
 /** Split a flat task list into board columns, each sorted top-to-bottom. */
 export function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {

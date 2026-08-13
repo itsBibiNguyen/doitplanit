@@ -46,8 +46,9 @@ export async function createLabel(
 }
 
 /**
- * Replace the labels on a task. Returns the labels that are now attached,
- * in name order. Empty `labelIds` clears every label on the task.
+ * Sync the labels on a task by inserting/deleting only the rows that changed.
+ * Returns the labels that are now attached, in name order. Empty `labelIds`
+ * clears every label on the task.
  */
 export async function setTaskLabels(
   taskId: string,
@@ -56,18 +57,36 @@ export async function setTaskLabels(
   const supabase = getSupabaseClient();
   const unique = [...new Set(labelIds)];
 
-  const { error: clearError } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from(TASK_LABELS)
-    .delete()
+    .select("label_id")
     .eq("task_id", taskId);
-  if (clearError) throw clearError;
+  if (existingError) throw existingError;
+
+  const current = new Set(
+    (existing ?? []).map((row) => row.label_id as string),
+  );
+  const next = new Set(unique);
+  const toRemove = [...current].filter((id) => !next.has(id));
+  const toAdd = unique.filter((id) => !current.has(id));
+
+  if (toRemove.length > 0) {
+    const { error } = await supabase
+      .from(TASK_LABELS)
+      .delete()
+      .eq("task_id", taskId)
+      .in("label_id", toRemove);
+    if (error) throw error;
+  }
+
+  if (toAdd.length > 0) {
+    const { error } = await supabase.from(TASK_LABELS).insert(
+      toAdd.map((label_id) => ({ task_id: taskId, label_id })),
+    );
+    if (error) throw error;
+  }
 
   if (unique.length === 0) return [];
-
-  const { error: insertError } = await supabase.from(TASK_LABELS).insert(
-    unique.map((label_id) => ({ task_id: taskId, label_id })),
-  );
-  if (insertError) throw insertError;
 
   const { data, error } = await supabase
     .from(LABELS)

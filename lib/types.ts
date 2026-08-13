@@ -49,6 +49,25 @@ export interface Comment {
   created_at: string;
 }
 
+export type TaskActivityAction =
+  | "created"
+  | "status_changed"
+  | "title_changed"
+  | "priority_changed"
+  | "due_date_changed"
+  | "label_added"
+  | "label_removed";
+
+export interface TaskActivity {
+  id: string;
+  task_id: string;
+  user_id: string;
+  action: TaskActivityAction;
+  from_value: string | null;
+  to_value: string | null;
+  created_at: string;
+}
+
 export const TASK_STATUSES: { id: TaskStatus; label: string }[] = [
   { id: "todo", label: "To Do" },
   { id: "in_progress", label: "In Progress" },
