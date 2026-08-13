@@ -162,10 +162,18 @@ npm run lint    # ESLint
 - [x] Loading skeletons during auth and fetch
 - [x] Empty-board and empty-column states
 - [x] Offline, auth, and failed-save recovery
-- [ ] Deploy to Vercel
+- [x] Deploy to Vercel
 
 ## Deployment
 
-The app deploys to [Vercel](https://vercel.com) with no extra configuration. Import the repository, then add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` as environment variables before the first build.
+**Live:** [https://doitplanit.vercel.app](https://doitplanit.vercel.app)
 
-A live URL will be listed here once deployed.
+The app deploys to [Vercel](https://vercel.com) with no extra configuration. The production project already has `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set.
+
+To redeploy from this machine:
+
+```bash
+npx vercel --prod
+```
+
+To have every push to `main` deploy automatically, connect the GitHub repo in the Vercel project: **Settings → Git**. The first CLI deploy could not attach `itsBibiNguyen/doitplanit` until the [Vercel GitHub app](https://github.com/apps/vercel) is installed on that repository.
