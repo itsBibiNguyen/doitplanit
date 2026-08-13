@@ -163,10 +163,20 @@ function mentionsLabels(raw: string, details: string): boolean {
   return /\blabels\b|\btask_labels\b/i.test(`${raw} ${details}`);
 }
 
+function mentionsComments(raw: string, details: string): boolean {
+  return /\bcomments\b/i.test(`${raw} ${details}`);
+}
+
 function missingSchema(
   raw: string,
   details: string,
 ): { message: string; hint: string } {
+  if (mentionsComments(raw, details)) {
+    return {
+      message: "The comments table doesn't exist yet.",
+      hint: "Run supabase/migrations/003_comments.sql in the Supabase SQL editor.",
+    };
+  }
   if (mentionsLabels(raw, details)) {
     return {
       message: "The labels tables don't exist yet.",

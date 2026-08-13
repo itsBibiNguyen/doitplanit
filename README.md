@@ -11,6 +11,7 @@ Built with Next.js, Supabase, and TypeScript.
 - **Full task detail.** Title, description, priority (low / normal / high), due date, labels, and status, all editable from a single dialog.
 - **Due-date awareness.** Dates show as filled chips for overdue, today, soon (1–3 days), or upcoming.
 - **Labels.** Color chips on cards, a picker in the task dialog, and header filters that match tasks with every selected label.
+- **Comments.** A chronological thread on each task, loaded when you open it — posting stays in the dialog so you can keep going.
 - **Search and filters.** Title search, priority chips, and label chips hide cards in place; dragging still uses the full board so a drop cannot skip a hidden card.
 - **Board at a glance.** A header button opens a summary panel with total, done, and overdue counts plus a status chart — always from the unfiltered list, closed by default so it does not steal column width.
 - **Responsive.** Columns scroll horizontally on narrow screens with a sticky header.
@@ -63,6 +64,7 @@ In the Supabase dashboard, open **SQL Editor → New query**, then paste and run
 
 1. [`supabase/migrations/001_tasks.sql`](supabase/migrations/001_tasks.sql) — `tasks` table, indexes, and RLS.
 2. [`supabase/migrations/002_labels.sql`](supabase/migrations/002_labels.sql) — `labels` and `task_labels`, plus RLS.
+3. [`supabase/migrations/003_comments.sql`](supabase/migrations/003_comments.sql) — `comments` table and RLS.
 
 Each script is safe to re-run.
 
@@ -111,13 +113,25 @@ The `labels` table:
 
 `task_labels` is a join table (`task_id`, `label_id`, `user_id`) with a composite primary key. Inserts and deletes are allowed only when the caller owns both the task and the label.
 
+The `comments` table:
+
+| Column       | Type          | Notes                                              |
+| ------------ | ------------- | -------------------------------------------------- |
+| `id`         | `uuid`        | Primary key                                        |
+| `task_id`    | `uuid`        | FK to `tasks`, cascades on task delete             |
+| `user_id`    | `uuid`        | Defaults to `auth.uid()`                           |
+| `body`       | `text`        | 1–2000 characters                                  |
+| `created_at` | `timestamptz` | Defaults to `now()`                                |
+
+Inserts are allowed only when the caller also owns the parent task. There is no update or delete from the client in this pass.
+
 ### Ordering
 
 `position` is a `numeric` rather than an integer so a card can be dropped between two neighbours by averaging their positions, with no need to renumber the rest of the column. New tasks are appended with a gap of 1000.
 
 ### Security
 
-RLS is enabled on `tasks`, `labels`, and `task_labels` with policies that require `auth.uid() = user_id`. A user can only ever read or modify their own rows.
+RLS is enabled on `tasks`, `labels`, `task_labels`, and `comments` with policies that require `auth.uid() = user_id`. A user can only ever read or modify their own rows.
 
 ## Project structure
 
@@ -129,8 +143,9 @@ app/
   error.tsx           Recoverable fallback for render-time crashes
   global-error.tsx    Last resort when the root layout itself fails
 components/
-  board/              Board, Column, TaskCard, TaskDialog, SetupNotice,
-                      BoardError, ConnectionBanner, skeletons, empty states
+  board/              Board, Column, TaskCard, TaskDialog, CommentThread,
+                      SetupNotice, BoardError, ConnectionBanner, skeletons,
+                      empty states
   layout/AppHeader    Branded header with search, filters, and new-task
   ui/Modal            Accessible modal primitive
   ui/Toaster          Transient failure and recovery messages
@@ -140,12 +155,13 @@ lib/
   supabase/auth       Anonymous session bootstrap
   supabase/tasks      Task queries and position helpers
   supabase/labels     Label queries and task–label assignment
+  supabase/comments   Comment list and create helpers
   hooks/useAuth       Session state for components
   hooks/useOnline     Browser connectivity
   hooks/useToasts     Toast queue
   errors.ts           Turns thrown errors into actionable messages
-  types.ts            Shared task and label types
-  utils.ts            Class names and due-date formatting
+  types.ts            Shared task, label, and comment types
+  utils.ts            Class names, due-date, and timestamp formatting
   board.ts            Column grouping, filters, and placement math
 supabase/
   migrations/         SQL schema and RLS policies
@@ -189,6 +205,7 @@ npm run lint    # ESLint
 - [x] Client-side search and priority filters
 - [x] On-demand board summary panel
 - [x] Labels / tags with card chips and board filters
+- [x] Task comments
 
 ## Deployment
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { CloseIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
 
 interface ModalProps {
   open: boolean;
@@ -10,9 +11,18 @@ interface ModalProps {
   children: React.ReactNode;
   /** Optional footer rendered with a top divider. */
   footer?: React.ReactNode;
+  /** Default `lg` (max-w-lg). Use `xl` for the edit dialog so the thread fits. */
+  size?: "lg" | "xl";
 }
 
-export function Modal({ open, onClose, title, children, footer }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  size = "lg",
+}: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,7 +63,10 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-surface shadow-[var(--shadow-panel)] sm:rounded-2xl"
+        className={cn(
+          "flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-surface shadow-[var(--shadow-panel)] sm:rounded-2xl",
+          size === "xl" ? "max-w-xl" : "max-w-lg",
+        )}
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-base font-semibold text-ink">{title}</h2>

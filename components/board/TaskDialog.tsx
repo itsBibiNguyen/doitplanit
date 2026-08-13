@@ -9,6 +9,7 @@ import { toAppError, type AppError } from "@/lib/errors";
 import { AlertIcon, TrashIcon } from "@/components/icons";
 import { DueDateChip } from "@/components/board/DueDateChip";
 import { LabelPicker } from "@/components/board/LabelPicker";
+import { CommentThread } from "@/components/board/CommentThread";
 
 export interface TaskDialogState {
   mode: "create" | "edit";
@@ -124,6 +125,7 @@ export function TaskDialog({
       open={state !== null}
       onClose={onClose}
       title={isEdit ? "Task details" : "New task"}
+      size={isEdit ? "xl" : "lg"}
       footer={
         <div className="flex items-center justify-between gap-3">
           {isEdit ? (
@@ -265,6 +267,14 @@ export function TaskDialog({
           </div>
         ) : null}
       </form>
+
+      {isEdit && state?.task ? (
+        <CommentThread
+          taskId={state.task.id}
+          disabled={busy}
+          onError={(err) => setError(err)}
+        />
+      ) : null}
     </Modal>
   );
 }

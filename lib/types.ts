@@ -41,6 +41,14 @@ export interface Task {
   labels: Label[];
 }
 
+export interface Comment {
+  id: string;
+  task_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+}
+
 export const TASK_STATUSES: { id: TaskStatus; label: string }[] = [
   { id: "todo", label: "To Do" },
   { id: "in_progress", label: "In Progress" },

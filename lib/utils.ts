@@ -54,6 +54,26 @@ function parseHex(hex: string): { r: number; g: number; b: number } | null {
   };
 }
 
+/**
+ * Timestamp for comments and activity: "Just now" for the first 45 seconds,
+ * then a short local date and time (year included when it isn't this year).
+ */
+export function formatRelativeTime(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const diffMs = now.getTime() - date.getTime();
+  if (diffMs < 45_000) return "Just now";
+
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** Chip copy for a due date: "Overdue · Jul 24", "Today", "Soon · Jul 26", or "Jul 28". */
 export function formatDueChip(iso: string | null): string | null {
   const formatted = formatDueDate(iso);

@@ -112,3 +112,9 @@ export const ChartIcon = (props: IconProps) => (
     <path d="M3 20h18" />
   </Icon>
 );
+
+export const CommentIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M7 17.5 4 21V6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H7z" />
+  </Icon>
+);
