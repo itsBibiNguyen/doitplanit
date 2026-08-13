@@ -3,7 +3,7 @@
 import type { TaskPriority } from "@/lib/types";
 import { TASK_PRIORITIES } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { PlusIcon, SearchIcon } from "@/components/icons";
+import { ChartIcon, PlusIcon, SearchIcon } from "@/components/icons";
 
 export interface BoardFilters {
   query: string;
@@ -21,6 +21,10 @@ interface AppHeaderProps {
   /** Optional right-aligned status slot (e.g. guest badge). */
   statusSlot?: React.ReactNode;
   filters?: BoardFilters;
+  /** Shown once the board has tasks. Toggles the summary slide-over. */
+  summaryAvailable?: boolean;
+  summaryOpen?: boolean;
+  onToggleSummary?: () => void;
 }
 
 export function AppHeader({
@@ -28,6 +32,9 @@ export function AppHeader({
   newTaskDisabled,
   statusSlot,
   filters,
+  summaryAvailable,
+  summaryOpen,
+  onToggleSummary,
 }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-surface/85 backdrop-blur-md">
@@ -51,8 +58,26 @@ export function AppHeader({
             </div>
           ) : null}
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {statusSlot}
+            {summaryAvailable ? (
+              <button
+                type="button"
+                onClick={onToggleSummary}
+                aria-expanded={summaryOpen}
+                aria-controls="board-summary"
+                aria-label="Board summary"
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+                  summaryOpen
+                    ? "bg-accent-soft text-accent"
+                    : "border border-border bg-surface text-ink-soft hover:bg-surface-2 hover:text-ink",
+                )}
+              >
+                <ChartIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Summary</span>
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={onNewTask}

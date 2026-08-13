@@ -9,7 +9,9 @@ Built with Next.js, Supabase, and TypeScript.
 - **No-friction start.** An anonymous guest session is created on first load, so the board is usable immediately. The session persists across reloads.
 - **Private by default.** Every task is scoped to your user ID and enforced at the database level with Postgres Row Level Security — not just in application code.
 - **Full task detail.** Title, description, priority (low / normal / high), due date, and status, all editable from a single dialog.
-- **Due-date awareness.** Dates are color-coded as overdue, due today, or upcoming.
+- **Due-date awareness.** Dates show as filled chips for overdue, today, soon (1–3 days), or upcoming.
+- **Search and filters.** Title search and priority chips hide cards in place; dragging still uses the full board so a drop cannot skip a hidden card.
+- **Board at a glance.** A header button opens a summary panel with total, done, and overdue counts plus a status chart — always from the unfiltered list, closed by default so it does not steal column width.
 - **Responsive.** Columns scroll horizontally on narrow screens with a sticky header.
 - **Honest about failure.** Losing connection shows a banner instead of breaking the board, a drop that can't be saved slides back with a retry, and every error message says what to do next rather than echoing a Postgres code.
 
@@ -163,6 +165,9 @@ npm run lint    # ESLint
 - [x] Empty-board and empty-column states
 - [x] Offline, auth, and failed-save recovery
 - [x] Deploy to Vercel
+- [x] Due-date chips (overdue, today, soon, upcoming)
+- [x] Client-side search and priority filters
+- [x] On-demand board summary panel
 
 ## Deployment
 

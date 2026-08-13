@@ -105,3 +105,10 @@ export const SearchIcon = (props: IconProps) => (
     <path d="M20 20l-3-3" />
   </Icon>
 );
+
+export const ChartIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 20V10M10 20V4M16 20v-7" />
+    <path d="M3 20h18" />
+  </Icon>
+);

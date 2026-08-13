@@ -31,6 +31,12 @@
   --warn: #b45309;
   --warn-soft: #fdf2e3;
 
+  /* Status chart (distinct from priority pips and from each other) */
+  --status-todo: #64748b;
+  --status-progress: #fafa33;
+  --status-review: #fac533;
+  --status-done: #059669;
+
   /* Loading placeholders */
   --skeleton: #e3e8ee;
   --skeleton-sheen: #f2f5f8;
@@ -60,6 +66,10 @@
   --color-prio-low: var(--prio-low);
   --color-prio-normal: var(--prio-normal);
   --color-prio-high: var(--prio-high);
+  --color-status-todo: var(--status-todo);
+  --color-status-progress: var(--status-progress);
+  --color-status-review: var(--status-review);
+  --color-status-done: var(--status-done);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-warn: var(--warn);
@@ -135,6 +145,20 @@ body {
   animation: dp-fade-in 0.2s ease-out both;
 }
 
+@keyframes dp-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.dp-slide-in-right {
+  animation: dp-slide-in-right 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Toasts rise from the bottom edge as they enter. */
 @keyframes dp-toast-in {
   from {
@@ -175,6 +199,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .dp-column-in,
   .dp-fade-in,
+  .dp-slide-in-right,
   .dp-toast-in {
     animation: none;
   }

@@ -1,6 +1,7 @@
 import type { Active, Over } from "@dnd-kit/core";
 import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
 import { TASK_STATUSES } from "@/lib/types";
+import { dueState } from "@/lib/utils";
 
 /** Gap between task positions; leaves room to insert between neighbours. */
 export const POSITION_STEP = 1000;
@@ -42,6 +43,31 @@ export function filterTasks(
     if (priority !== "all" && task.priority !== priority) return false;
     return true;
   });
+}
+
+export interface BoardSummaryCounts {
+  total: number;
+  done: number;
+  overdue: number;
+  byStatus: Record<TaskStatus, number>;
+}
+
+/** Totals from the full task list — filters must not change these numbers. */
+export function summarizeBoard(tasks: Task[]): BoardSummaryCounts {
+  const byStatus: Record<TaskStatus, number> = {
+    todo: 0,
+    in_progress: 0,
+    in_review: 0,
+    done: 0,
+  };
+  let overdue = 0;
+  for (const task of tasks) {
+    byStatus[task.status] += 1;
+    if (task.status !== "done" && dueState(task.due_date) === "overdue") {
+      overdue += 1;
+    }
+  }
+  return { total: tasks.length, done: byStatus.done, overdue, byStatus };
 }
 
 /**

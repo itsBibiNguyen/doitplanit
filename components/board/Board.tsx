@@ -30,6 +30,8 @@ import {
   isPlacedAfter,
   planPlacement,
   positionBetween,
+  summarizeBoard,
+  type BoardSummaryCounts,
   type Placement,
 } from "@/lib/board";
 import {
@@ -48,6 +50,7 @@ import { Toaster } from "@/components/ui/Toaster";
 import { BoardCanvas } from "./BoardCanvas";
 import { BoardError } from "./BoardError";
 import { BoardSkeleton } from "./BoardSkeleton";
+import { BoardSummary } from "./BoardSummary";
 import { Column } from "./Column";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { EmptyBoard } from "./EmptyBoard";
@@ -96,6 +99,7 @@ export function Board() {
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | "all">(
     "all",
   );
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   // Drag handlers fire between renders, so they read the board from a ref that
   // `setTasks` keeps in step with state.
@@ -231,6 +235,18 @@ export function Board() {
       onClear: clearFilters,
     }),
     [query, priorityFilter, clearFilters],
+  );
+
+  const summary = useMemo(
+    () =>
+      summaryOpen && tasks.length > 0 ? summarizeBoard(tasks) : null,
+    [summaryOpen, tasks],
+  );
+
+  const closeSummary = useCallback(() => setSummaryOpen(false), []);
+  const toggleSummary = useCallback(
+    () => setSummaryOpen((open) => !open),
+    [],
   );
 
   const handleNewTask = useCallback(
@@ -467,6 +483,16 @@ export function Board() {
   const isBooting =
     authStatus === "loading" || loadState === "idle" || loadState === "loading";
 
+  const summaryAvailable =
+    !isBooting &&
+    authStatus !== "error" &&
+    loadState !== "error" &&
+    tasks.length > 0;
+
+  useEffect(() => {
+    if (!summaryAvailable) setSummaryOpen(false);
+  }, [summaryAvailable]);
+
   if (authStatus === "unconfigured") {
     return (
       <Shell>
@@ -482,6 +508,11 @@ export function Board() {
         onNewTask={() => handleNewTask()}
         newTaskDisabled={authStatus !== "ready" || !online}
         filters={filters}
+        summaryAvailable={summaryAvailable}
+        summaryOpen={summaryOpen}
+        summary={summary}
+        onToggleSummary={toggleSummary}
+        onCloseSummary={closeSummary}
       >
         {authStatus === "error" ? (
           <BoardError error={toAppError(authError)} onRetry={retry} />
@@ -539,12 +570,22 @@ function Shell({
   onNewTask,
   newTaskDisabled,
   filters,
+  summaryAvailable,
+  summaryOpen,
+  summary,
+  onToggleSummary,
+  onCloseSummary,
 }: {
   children: React.ReactNode;
   offline?: boolean;
   onNewTask?: () => void;
   newTaskDisabled?: boolean;
   filters?: BoardFilters;
+  summaryAvailable?: boolean;
+  summaryOpen?: boolean;
+  summary?: BoardSummaryCounts | null;
+  onToggleSummary?: () => void;
+  onCloseSummary?: () => void;
 }) {
   return (
     <div className="flex min-h-screen flex-col">
@@ -552,9 +593,17 @@ function Shell({
         onNewTask={onNewTask}
         newTaskDisabled={newTaskDisabled}
         filters={filters}
+        summaryAvailable={summaryAvailable}
+        summaryOpen={summaryOpen}
+        onToggleSummary={onToggleSummary}
       />
       {offline ? <ConnectionBanner /> : null}
-      <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+        {summaryAvailable && summaryOpen && summary && onCloseSummary ? (
+          <BoardSummary {...summary} onClose={onCloseSummary} />
+        ) : null}
+      </div>
     </div>
   );
 }
