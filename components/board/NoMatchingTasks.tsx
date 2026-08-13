@@ -15,8 +15,8 @@ export function NoMatchingTasks({ onClear }: { onClear: () => void }) {
           No matching tasks
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-          Nothing on the board matches this search or priority. Clear the
-          filters to see every card again.
+          Nothing on the board matches these filters. Clear them to see every
+          card again.
         </p>
         <button
           type="button"

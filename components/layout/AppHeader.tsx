@@ -1,18 +1,19 @@
 "use client";
 
-import type { TaskPriority } from "@/lib/types";
+import type { Label, TaskPriority } from "@/lib/types";
 import { TASK_PRIORITIES } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, contrastOn } from "@/lib/utils";
 import { ChartIcon, PlusIcon, SearchIcon } from "@/components/icons";
 
 export interface BoardFilters {
   query: string;
   priorityFilter: TaskPriority | "all";
+  labelFilter: string[];
+  labels: Label[];
   onQueryChange: (query: string) => void;
   onPriorityChange: (priority: TaskPriority | "all") => void;
+  onLabelToggle: (id: string) => void;
   onClear: () => void;
-  /** Reserved for label chips in 6b.1. */
-  extras?: React.ReactNode;
 }
 
 interface AppHeaderProps {
@@ -103,10 +104,12 @@ export function AppHeader({
 
 function FilterBar({ filters }: { filters: BoardFilters }) {
   const filtersActive =
-    filters.query.trim().length > 0 || filters.priorityFilter !== "all";
+    filters.query.trim().length > 0 ||
+    filters.priorityFilter !== "all" ||
+    filters.labelFilter.length > 0;
 
   return (
-    <div className="flex w-full min-w-0 items-center gap-2 lg:max-w-xl">
+    <div className="flex w-full min-w-0 items-center gap-2 lg:max-w-3xl">
       <label className="relative min-w-0 flex-1">
         <span className="sr-only">Search tasks</span>
         <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
@@ -120,7 +123,7 @@ function FilterBar({ filters }: { filters: BoardFilters }) {
         />
       </label>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="dp-scroll flex min-w-0 shrink items-center gap-1 overflow-x-auto">
         {TASK_PRIORITIES.map((p) => {
           const selected = filters.priorityFilter === p.id;
           return (
@@ -132,7 +135,7 @@ function FilterBar({ filters }: { filters: BoardFilters }) {
                 filters.onPriorityChange(selected ? "all" : p.id)
               }
               className={cn(
-                "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
                 selected
                   ? "bg-accent-soft text-accent"
                   : "bg-surface-2 text-ink-soft hover:bg-border",
@@ -142,7 +145,41 @@ function FilterBar({ filters }: { filters: BoardFilters }) {
             </button>
           );
         })}
-        {filters.extras}
+        {filters.labels.length > 0 ? (
+          <span className="mx-0.5 h-4 w-px shrink-0 bg-border" aria-hidden />
+        ) : null}
+        {filters.labels.map((label) => {
+          const selected = filters.labelFilter.includes(label.id);
+          return (
+            <button
+              key={label.id}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => filters.onLabelToggle(label.id)}
+              title={label.name}
+              className={cn(
+                "inline-flex max-w-[7.5rem] shrink-0 items-center gap-1.5 truncate rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+                !selected && "bg-surface-2 text-ink-soft hover:bg-border",
+              )}
+              style={
+                selected
+                  ? {
+                      backgroundColor: label.color,
+                      color: contrastOn(label.color),
+                    }
+                  : undefined
+              }
+            >
+              {!selected ? (
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: label.color }}
+                />
+              ) : null}
+              <span className="truncate">{label.name}</span>
+            </button>
+          );
+        })}
       </div>
 
       {filtersActive ? (

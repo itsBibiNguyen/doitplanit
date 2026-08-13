@@ -1,10 +1,43 @@
 "use client";
 
 import { getSupabaseClient } from "./client";
-import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
+import type { Label, Task, TaskPriority, TaskStatus } from "@/lib/types";
+import { sortLabels } from "@/lib/types";
 import { POSITION_STEP } from "@/lib/board";
 
 const TABLE = "tasks";
+
+const TASK_SELECT = "*, task_labels ( labels (*) )";
+
+interface TaskRow extends Omit<Task, "labels"> {
+  task_labels?: Array<{ labels: Label | Label[] | null }>;
+}
+
+function asLabel(value: Label | Label[] | null | undefined): Label | null {
+  if (!value) return null;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function flattenTask(row: TaskRow): Task {
+  const labels: Label[] = [];
+  for (const link of row.task_labels ?? []) {
+    const label = asLabel(link.labels);
+    if (label) labels.push(label);
+  }
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    title: row.title,
+    description: row.description,
+    status: row.status,
+    priority: row.priority,
+    due_date: row.due_date,
+    position: row.position,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    labels: sortLabels(labels),
+  };
+}
 
 export interface NewTaskInput {
   title: string;
@@ -26,12 +59,12 @@ export async function listTasks(): Promise<Task[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from(TABLE)
-    .select("*")
+    .select(TASK_SELECT)
     .order("status", { ascending: true })
     .order("position", { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as Task[];
+  return ((data ?? []) as TaskRow[]).map(flattenTask);
 }
 
 /**
@@ -53,11 +86,11 @@ export async function createTask(input: NewTaskInput): Promise<Task> {
       status,
       position,
     })
-    .select("*")
+    .select(TASK_SELECT)
     .single();
 
   if (error) throw error;
-  return data as Task;
+  return flattenTask(data as TaskRow);
 }
 
 /** Update editable content fields on a task. */
@@ -79,11 +112,11 @@ export async function updateTask(
     .from(TABLE)
     .update(normalized)
     .eq("id", id)
-    .select("*")
+    .select(TASK_SELECT)
     .single();
 
   if (error) throw error;
-  return data as Task;
+  return flattenTask(data as TaskRow);
 }
 
 /** Move a task to a new column and/or position (used by drag-and-drop). */
@@ -97,11 +130,11 @@ export async function moveTask(
     .from(TABLE)
     .update({ status, position })
     .eq("id", id)
-    .select("*")
+    .select(TASK_SELECT)
     .single();
 
   if (error) throw error;
-  return data as Task;
+  return flattenTask(data as TaskRow);
 }
 
 /** Permanently delete a task. */

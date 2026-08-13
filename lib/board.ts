@@ -31,16 +31,24 @@ export function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
   return groups;
 }
 
-/** Client-side title + priority filter. DnD still runs on the unfiltered list. */
+/**
+ * Client-side title + priority + label filter. DnD still runs on the
+ * unfiltered list. Multiple selected labels are an intersection (has all).
+ */
 export function filterTasks(
   tasks: Task[],
   query: string,
   priority: TaskPriority | "all",
+  labelIds: string[] = [],
 ): Task[] {
   const needle = query.trim().toLowerCase();
   return tasks.filter((task) => {
     if (needle && !task.title.toLowerCase().includes(needle)) return false;
     if (priority !== "all" && task.priority !== priority) return false;
+    if (labelIds.length > 0) {
+      const have = new Set((task.labels ?? []).map((l) => l.id));
+      if (!labelIds.every((id) => have.has(id))) return false;
+    }
     return true;
   });
 }

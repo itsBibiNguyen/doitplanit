@@ -4,6 +4,7 @@ import type { Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { GripIcon } from "@/components/icons";
 import { DueDateChip } from "@/components/board/DueDateChip";
+import { TaskLabelChips } from "@/components/board/LabelChip";
 
 const PRIORITY_META: Record<Task["priority"], { label: string; dot: string }> = {
   high: { label: "High", dot: "bg-prio-high" },
@@ -70,6 +71,8 @@ export function TaskCard({
           <GripIcon className="h-4 w-4" />
         </button>
       </div>
+
+      <TaskLabelChips labels={task.labels ?? []} />
 
       {task.description ? (
         <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-ink-soft">

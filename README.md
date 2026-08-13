@@ -8,9 +8,10 @@ Built with Next.js, Supabase, and TypeScript.
 
 - **No-friction start.** An anonymous guest session is created on first load, so the board is usable immediately. The session persists across reloads.
 - **Private by default.** Every task is scoped to your user ID and enforced at the database level with Postgres Row Level Security — not just in application code.
-- **Full task detail.** Title, description, priority (low / normal / high), due date, and status, all editable from a single dialog.
+- **Full task detail.** Title, description, priority (low / normal / high), due date, labels, and status, all editable from a single dialog.
 - **Due-date awareness.** Dates show as filled chips for overdue, today, soon (1–3 days), or upcoming.
-- **Search and filters.** Title search and priority chips hide cards in place; dragging still uses the full board so a drop cannot skip a hidden card.
+- **Labels.** Color chips on cards, a picker in the task dialog, and header filters that match tasks with every selected label.
+- **Search and filters.** Title search, priority chips, and label chips hide cards in place; dragging still uses the full board so a drop cannot skip a hidden card.
 - **Board at a glance.** A header button opens a summary panel with total, done, and overdue counts plus a status chart — always from the unfiltered list, closed by default so it does not steal column width.
 - **Responsive.** Columns scroll horizontally on narrow screens with a sticky header.
 - **Honest about failure.** Losing connection shows a banner instead of breaking the board, a drop that can't be saved slides back with a retry, and every error message says what to do next rather than echoing a Postgres code.
@@ -58,7 +59,12 @@ If your project predates the new API keys and only offers a legacy `anon` key, s
 
 ### 4. Set up the database
 
-In the Supabase dashboard, open **SQL Editor → New query**, then paste and run the contents of [`supabase/migrations/001_tasks.sql`](supabase/migrations/001_tasks.sql). This creates the `tasks` table, its indexes, and the RLS policies. The script is safe to re-run.
+In the Supabase dashboard, open **SQL Editor → New query**, then paste and run each migration in order:
+
+1. [`supabase/migrations/001_tasks.sql`](supabase/migrations/001_tasks.sql) — `tasks` table, indexes, and RLS.
+2. [`supabase/migrations/002_labels.sql`](supabase/migrations/002_labels.sql) — `labels` and `task_labels`, plus RLS.
+
+Each script is safe to re-run.
 
 ### 5. Enable anonymous sign-ins
 
@@ -93,13 +99,25 @@ The `tasks` table:
 
 `status` and `priority` are constrained by `CHECK` clauses, so invalid values are rejected by the database.
 
+The `labels` table:
+
+| Column       | Type          | Notes                                             |
+| ------------ | ------------- | ------------------------------------------------- |
+| `id`         | `uuid`        | Primary key                                       |
+| `user_id`    | `uuid`        | Defaults to `auth.uid()`, unique with `lower(name)` |
+| `name`       | `text`        | 1–32 characters                                   |
+| `color`      | `text`        | `#RRGGBB`                                         |
+| `created_at` | `timestamptz` | Defaults to `now()`                               |
+
+`task_labels` is a join table (`task_id`, `label_id`, `user_id`) with a composite primary key. Inserts and deletes are allowed only when the caller owns both the task and the label.
+
 ### Ordering
 
 `position` is a `numeric` rather than an integer so a card can be dropped between two neighbours by averaging their positions, with no need to renumber the rest of the column. New tasks are appended with a gap of 1000.
 
 ### Security
 
-RLS is enabled on `tasks` with separate `SELECT`, `INSERT`, `UPDATE`, and `DELETE` policies, each requiring `auth.uid() = user_id`. A user can only ever read or modify their own rows.
+RLS is enabled on `tasks`, `labels`, and `task_labels` with policies that require `auth.uid() = user_id`. A user can only ever read or modify their own rows.
 
 ## Project structure
 
@@ -113,7 +131,7 @@ app/
 components/
   board/              Board, Column, TaskCard, TaskDialog, SetupNotice,
                       BoardError, ConnectionBanner, skeletons, empty states
-  layout/AppHeader    Branded header with the new-task action
+  layout/AppHeader    Branded header with search, filters, and new-task
   ui/Modal            Accessible modal primitive
   ui/Toaster          Transient failure and recovery messages
   icons.tsx           Shared icon set
@@ -121,12 +139,14 @@ lib/
   supabase/client     Singleton browser client
   supabase/auth       Anonymous session bootstrap
   supabase/tasks      Task queries and position helpers
+  supabase/labels     Label queries and task–label assignment
   hooks/useAuth       Session state for components
   hooks/useOnline     Browser connectivity
   hooks/useToasts     Toast queue
   errors.ts           Turns thrown errors into actionable messages
-  types.ts            Shared task types
+  types.ts            Shared task and label types
   utils.ts            Class names and due-date formatting
+  board.ts            Column grouping, filters, and placement math
 supabase/
   migrations/         SQL schema and RLS policies
 ```
@@ -168,6 +188,7 @@ npm run lint    # ESLint
 - [x] Due-date chips (overdue, today, soon, upcoming)
 - [x] Client-side search and priority filters
 - [x] On-demand board summary panel
+- [x] Labels / tags with card chips and board filters
 
 ## Deployment
 

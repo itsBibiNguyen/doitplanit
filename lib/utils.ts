@@ -36,6 +36,24 @@ export function dueState(iso: string | null): DueState {
   return "upcoming";
 }
 
+/** Pick ink or white so text stays readable on a hex chip. */
+export function contrastOn(hex: string): "#0b0f14" | "#ffffff" {
+  const rgb = parseHex(hex);
+  if (!rgb) return "#ffffff";
+  const luma = (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
+  return luma > 0.55 ? "#0b0f14" : "#ffffff";
+}
+
+function parseHex(hex: string): { r: number; g: number; b: number } | null {
+  const match = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!match) return null;
+  return {
+    r: parseInt(match[1].slice(0, 2), 16),
+    g: parseInt(match[1].slice(2, 4), 16),
+    b: parseInt(match[1].slice(4, 6), 16),
+  };
+}
+
 /** Chip copy for a due date: "Overdue · Jul 24", "Today", "Soon · Jul 26", or "Jul 28". */
 export function formatDueChip(iso: string | null): string | null {
   const formatted = formatDueDate(iso);

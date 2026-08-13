@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
+import type { Label, Task, TaskPriority, TaskStatus } from "@/lib/types";
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/types";
 import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import { toAppError, type AppError } from "@/lib/errors";
 import { AlertIcon, TrashIcon } from "@/components/icons";
 import { DueDateChip } from "@/components/board/DueDateChip";
+import { LabelPicker } from "@/components/board/LabelPicker";
 
 export interface TaskDialogState {
   mode: "create" | "edit";
@@ -21,14 +22,17 @@ export interface TaskDraft {
   priority: TaskPriority;
   status: TaskStatus;
   due_date: string;
+  labelIds: string[];
 }
 
 interface TaskDialogProps {
   state: TaskDialogState | null;
+  labels: Label[];
   onClose: () => void;
   onCreate: (draft: TaskDraft) => Promise<void>;
   onUpdate: (id: string, draft: TaskDraft) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onCreateLabel: (name: string, color: string) => Promise<Label>;
 }
 
 function draftFromState(state: TaskDialogState | null): TaskDraft {
@@ -40,6 +44,7 @@ function draftFromState(state: TaskDialogState | null): TaskDraft {
       priority: t.priority,
       status: t.status,
       due_date: t.due_date ?? "",
+      labelIds: (t.labels ?? []).map((l) => l.id),
     };
   }
   return {
@@ -48,6 +53,7 @@ function draftFromState(state: TaskDialogState | null): TaskDraft {
     priority: "normal",
     status: state?.defaultStatus ?? "todo",
     due_date: "",
+    labelIds: [],
   };
 }
 
@@ -64,10 +70,12 @@ export function taskDialogKey(state: TaskDialogState | null): string {
 
 export function TaskDialog({
   state,
+  labels,
   onClose,
   onCreate,
   onUpdate,
   onDelete,
+  onCreateLabel,
 }: TaskDialogProps) {
   const [draft, setDraft] = useState<TaskDraft>(() => draftFromState(state));
   const [submitting, setSubmitting] = useState(false);
@@ -231,6 +239,14 @@ export function TaskDialog({
             ) : null}
           </Field>
         </div>
+
+        <LabelPicker
+          labels={labels}
+          selectedIds={draft.labelIds}
+          onChange={(labelIds) => setDraft({ ...draft, labelIds })}
+          onCreateLabel={onCreateLabel}
+          disabled={busy}
+        />
 
         {error ? (
           <div

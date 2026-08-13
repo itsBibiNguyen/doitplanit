@@ -18,8 +18,8 @@ import {
   type DropAnimation,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
-import { TASK_STATUSES } from "@/lib/types";
+import type { Label, Task, TaskPriority, TaskStatus } from "@/lib/types";
+import { TASK_STATUSES, sortLabels } from "@/lib/types";
 import {
   STATUS_LABEL,
   containerOf,
@@ -41,6 +41,7 @@ import {
   moveTask,
   updateTask,
 } from "@/lib/supabase/tasks";
+import { createLabel, listLabels, setTaskLabels } from "@/lib/supabase/labels";
 import { isOnline, toAppError, type AppError } from "@/lib/errors";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useOnline } from "@/lib/hooks/useOnline";
@@ -92,6 +93,7 @@ export function Board() {
   const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
 
   const [tasks, setTasksState] = useState<Task[]>([]);
+  const [labels, setLabels] = useState<Label[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [loadError, setLoadError] = useState<AppError | null>(null);
   const [dialog, setDialog] = useState<TaskDialogState | null>(null);
@@ -99,6 +101,7 @@ export function Board() {
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | "all">(
     "all",
   );
+  const [labelFilter, setLabelFilter] = useState<string[]>([]);
   const [summaryOpen, setSummaryOpen] = useState(false);
 
   // Drag handlers fire between renders, so they read the board from a ref that
@@ -143,8 +146,12 @@ export function Board() {
           setLoadError(null);
         }
         try {
-          const data = await listTasks();
+          const [data, boardLabels] = await Promise.all([
+            listTasks(),
+            listLabels(),
+          ]);
           setTasks(data);
+          setLabels(boardLabels);
           setLoadState("ready");
           setLoadError(null);
           return true;
@@ -211,30 +218,42 @@ export function Board() {
   }, [activeTask]);
 
   const visibleTasks = useMemo(
-    () => filterTasks(tasks, query, priorityFilter),
-    [tasks, query, priorityFilter],
+    () => filterTasks(tasks, query, priorityFilter, labelFilter),
+    [tasks, query, priorityFilter, labelFilter],
   );
   const tasksByStatus = useMemo(
     () => groupByStatus(visibleTasks),
     [visibleTasks],
   );
   const filtersActive =
-    query.trim().length > 0 || priorityFilter !== "all";
+    query.trim().length > 0 ||
+    priorityFilter !== "all" ||
+    labelFilter.length > 0;
 
   const clearFilters = useCallback(() => {
     setQuery("");
     setPriorityFilter("all");
+    setLabelFilter([]);
+  }, []);
+
+  const toggleLabelFilter = useCallback((id: string) => {
+    setLabelFilter((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
   }, []);
 
   const filters: BoardFilters = useMemo(
     () => ({
       query,
       priorityFilter,
+      labelFilter,
+      labels,
       onQueryChange: setQuery,
       onPriorityChange: setPriorityFilter,
+      onLabelToggle: toggleLabelFilter,
       onClear: clearFilters,
     }),
-    [query, priorityFilter, clearFilters],
+    [query, priorityFilter, labelFilter, labels, toggleLabelFilter, clearFilters],
   );
 
   const summary = useMemo(
@@ -273,7 +292,11 @@ export function Board() {
         status: draft.status,
         due_date: draft.due_date || null,
       });
-      setTasks((prev) => [...prev, created]);
+      const attached =
+        draft.labelIds.length > 0
+          ? await setTaskLabels(created.id, draft.labelIds)
+          : [];
+      setTasks((prev) => [...prev, { ...created, labels: attached }]);
     },
     [setTasks],
   );
@@ -298,9 +321,29 @@ export function Board() {
         result = await moveTask(id, draft.status, position);
       }
 
-      setTasks((prev) => prev.map((t) => (t.id === id ? result : t)));
+      const currentIds = (result.labels ?? []).map((l) => l.id);
+      const attached = sameIdSet(currentIds, draft.labelIds)
+        ? result.labels
+        : await setTaskLabels(id, draft.labelIds);
+
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...result, labels: attached } : t)),
+      );
     },
     [setTasks],
+  );
+
+  const handleCreateLabel = useCallback(
+    async (name: string, color: string) => {
+      const created = await createLabel(name, color);
+      setLabels((prev) =>
+        prev.some((l) => l.id === created.id)
+          ? prev
+          : sortLabels([...prev, created]),
+      );
+      return created;
+    },
+    [],
   );
 
   const handleDelete = useCallback(
@@ -555,13 +598,21 @@ export function Board() {
       <TaskDialog
         key={taskDialogKey(dialog)}
         state={dialog}
+        labels={labels}
         onClose={() => setDialog(null)}
         onCreate={handleCreate}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
+        onCreateLabel={handleCreateLabel}
       />
     </>
   );
+}
+
+function sameIdSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  return b.every((id) => set.has(id));
 }
 
 function Shell({
