@@ -7,6 +7,7 @@ import { Modal } from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
 import { toAppError, type AppError } from "@/lib/errors";
 import { AlertIcon, TrashIcon } from "@/components/icons";
+import { DueDateChip } from "@/components/board/DueDateChip";
 
 export interface TaskDialogState {
   mode: "create" | "edit";
@@ -225,6 +226,9 @@ export function TaskDialog({
               }
               className={inputClass}
             />
+            {draft.due_date ? (
+              <DueDateChip dueDate={draft.due_date} className="mt-1.5" />
+            ) : null}
           </Field>
         </div>
 

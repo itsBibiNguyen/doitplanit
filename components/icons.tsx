@@ -98,3 +98,10 @@ export const InboxIcon = (props: IconProps) => (
     <path d="M5.5 5h13l2.5 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6l2.5-7z" />
   </Icon>
 );
+
+export const SearchIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-3-3" />
+  </Icon>
+);

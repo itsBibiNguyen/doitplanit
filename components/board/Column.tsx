@@ -18,6 +18,8 @@ interface ColumnProps {
   isDropTarget?: boolean;
   /** True while any card on the board is being dragged. */
   isDragActive?: boolean;
+  /** True when a search/priority filter is hiding some cards. */
+  filtersActive?: boolean;
   onOpenTask?: (task: Task) => void;
   onAddTask?: (status: TaskStatus) => void;
 }
@@ -28,6 +30,7 @@ export function Column({
   tasks,
   isDropTarget,
   isDragActive,
+  filtersActive,
   onOpenTask,
   onAddTask,
 }: ColumnProps) {
@@ -73,6 +76,7 @@ export function Column({
               label={label}
               isDragActive={isDragActive}
               isDropTarget={isDropTarget}
+              filtersActive={filtersActive}
               onAddTask={() => onAddTask?.(status)}
             />
           ) : (
@@ -105,12 +109,14 @@ function EmptyColumn({
   label,
   isDragActive,
   isDropTarget,
+  filtersActive,
   onAddTask,
 }: {
   status: TaskStatus;
   label: string;
   isDragActive?: boolean;
   isDropTarget?: boolean;
+  filtersActive?: boolean;
   onAddTask: () => void;
 }) {
   // Mid-drag the slot reads as a landing zone instead of a button, so the
@@ -129,6 +135,20 @@ function EmptyColumn({
         <span className="text-xs font-medium">
           {isDropTarget ? `Drop into ${label}` : "Drop a card here"}
         </span>
+      </div>
+    );
+  }
+
+  if (filtersActive) {
+    return (
+      <div
+        className={cn(
+          placeholderClass,
+          "border-border-strong/70 text-ink-muted",
+        )}
+      >
+        <InboxIcon className="h-6 w-6" />
+        <span className="text-xs font-medium">No matching tasks</span>
       </div>
     );
   }

@@ -18,13 +18,14 @@ import {
   type DropAnimation,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import type { Task, TaskStatus } from "@/lib/types";
+import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
 import { TASK_STATUSES } from "@/lib/types";
 import {
   STATUS_LABEL,
   containerOf,
   dragStatus,
   dragTitle,
+  filterTasks,
   groupByStatus,
   isPlacedAfter,
   planPlacement,
@@ -42,7 +43,7 @@ import { isOnline, toAppError, type AppError } from "@/lib/errors";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useOnline } from "@/lib/hooks/useOnline";
 import { useToasts } from "@/lib/hooks/useToasts";
-import { AppHeader } from "@/components/layout/AppHeader";
+import { AppHeader, type BoardFilters } from "@/components/layout/AppHeader";
 import { Toaster } from "@/components/ui/Toaster";
 import { BoardCanvas } from "./BoardCanvas";
 import { BoardError } from "./BoardError";
@@ -50,6 +51,7 @@ import { BoardSkeleton } from "./BoardSkeleton";
 import { Column } from "./Column";
 import { ConnectionBanner } from "./ConnectionBanner";
 import { EmptyBoard } from "./EmptyBoard";
+import { NoMatchingTasks } from "./NoMatchingTasks";
 import { SetupNotice } from "./SetupNotice";
 import { TaskCard } from "./TaskCard";
 import {
@@ -90,6 +92,10 @@ export function Board() {
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [loadError, setLoadError] = useState<AppError | null>(null);
   const [dialog, setDialog] = useState<TaskDialogState | null>(null);
+  const [query, setQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<TaskPriority | "all">(
+    "all",
+  );
 
   // Drag handlers fire between renders, so they read the board from a ref that
   // `setTasks` keeps in step with state.
@@ -200,7 +206,32 @@ export function Board() {
     return () => document.body.classList.remove("dp-dragging");
   }, [activeTask]);
 
-  const tasksByStatus = useMemo(() => groupByStatus(tasks), [tasks]);
+  const visibleTasks = useMemo(
+    () => filterTasks(tasks, query, priorityFilter),
+    [tasks, query, priorityFilter],
+  );
+  const tasksByStatus = useMemo(
+    () => groupByStatus(visibleTasks),
+    [visibleTasks],
+  );
+  const filtersActive =
+    query.trim().length > 0 || priorityFilter !== "all";
+
+  const clearFilters = useCallback(() => {
+    setQuery("");
+    setPriorityFilter("all");
+  }, []);
+
+  const filters: BoardFilters = useMemo(
+    () => ({
+      query,
+      priorityFilter,
+      onQueryChange: setQuery,
+      onPriorityChange: setPriorityFilter,
+      onClear: clearFilters,
+    }),
+    [query, priorityFilter, clearFilters],
+  );
 
   const handleNewTask = useCallback(
     (status?: TaskStatus) => {
@@ -450,6 +481,7 @@ export function Board() {
         offline={!online}
         onNewTask={() => handleNewTask()}
         newTaskDisabled={authStatus !== "ready" || !online}
+        filters={filters}
       >
         {authStatus === "error" ? (
           <BoardError error={toAppError(authError)} onRetry={retry} />
@@ -459,6 +491,8 @@ export function Board() {
           <BoardSkeleton />
         ) : tasks.length === 0 ? (
           <EmptyBoard onCreateTask={() => handleNewTask("todo")} />
+        ) : visibleTasks.length === 0 ? (
+          <NoMatchingTasks onClear={clearFilters} />
         ) : (
           <DndContext
             sensors={sensors}
@@ -474,6 +508,7 @@ export function Board() {
               tasksByStatus={tasksByStatus}
               overStatus={overStatus}
               isDragActive={activeTask !== null}
+              filtersActive={filtersActive}
               onOpenTask={handleOpenTask}
               onAddTask={handleNewTask}
             />
@@ -503,15 +538,21 @@ function Shell({
   offline,
   onNewTask,
   newTaskDisabled,
+  filters,
 }: {
   children: React.ReactNode;
   offline?: boolean;
   onNewTask?: () => void;
   newTaskDisabled?: boolean;
+  filters?: BoardFilters;
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <AppHeader onNewTask={onNewTask} newTaskDisabled={newTaskDisabled} />
+      <AppHeader
+        onNewTask={onNewTask}
+        newTaskDisabled={newTaskDisabled}
+        filters={filters}
+      />
       {offline ? <ConnectionBanner /> : null}
       <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
     </div>
@@ -522,12 +563,14 @@ function BoardColumns({
   tasksByStatus,
   overStatus,
   isDragActive,
+  filtersActive,
   onOpenTask,
   onAddTask,
 }: {
   tasksByStatus: Record<TaskStatus, Task[]>;
   overStatus: TaskStatus | null;
   isDragActive: boolean;
+  filtersActive: boolean;
   onOpenTask: (task: Task) => void;
   onAddTask: (status: TaskStatus) => void;
 }) {
@@ -545,6 +588,7 @@ function BoardColumns({
             tasks={tasksByStatus[col.id]}
             isDropTarget={overStatus === col.id}
             isDragActive={isDragActive}
+            filtersActive={filtersActive}
             onOpenTask={onOpenTask}
             onAddTask={onAddTask}
           />

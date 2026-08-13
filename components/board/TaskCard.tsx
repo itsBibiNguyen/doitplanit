@@ -1,19 +1,14 @@
 "use client";
 
 import type { Task } from "@/lib/types";
-import { cn, dueState, formatDueDate } from "@/lib/utils";
-import { CalendarIcon, GripIcon } from "@/components/icons";
+import { cn } from "@/lib/utils";
+import { GripIcon } from "@/components/icons";
+import { DueDateChip } from "@/components/board/DueDateChip";
 
 const PRIORITY_META: Record<Task["priority"], { label: string; dot: string }> = {
   high: { label: "High", dot: "bg-prio-high" },
   normal: { label: "Normal", dot: "bg-prio-normal" },
   low: { label: "Low", dot: "bg-prio-low" },
-};
-
-const DUE_STYLES: Record<string, string> = {
-  overdue: "text-prio-high",
-  today: "text-accent",
-  upcoming: "text-ink-muted",
 };
 
 interface TaskCardProps {
@@ -35,8 +30,6 @@ export function TaskCard({
   isOverlay,
 }: TaskCardProps) {
   const prio = PRIORITY_META[task.priority];
-  const due = formatDueDate(task.due_date);
-  const state = dueState(task.due_date);
 
   return (
     <div
@@ -89,17 +82,7 @@ export function TaskCard({
           <span className={cn("h-2 w-2 rounded-full", prio.dot)} />
           {prio.label}
         </span>
-        {due ? (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 text-xs font-medium",
-              DUE_STYLES[state ?? "upcoming"],
-            )}
-          >
-            <CalendarIcon className="h-3.5 w-3.5" />
-            {due}
-          </span>
-        ) : null}
+        <DueDateChip dueDate={task.due_date} />
       </div>
     </div>
   );

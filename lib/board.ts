@@ -1,5 +1,5 @@
 import type { Active, Over } from "@dnd-kit/core";
-import type { Task, TaskStatus } from "@/lib/types";
+import type { Task, TaskPriority, TaskStatus } from "@/lib/types";
 import { TASK_STATUSES } from "@/lib/types";
 
 /** Gap between task positions; leaves room to insert between neighbours. */
@@ -28,6 +28,20 @@ export function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
   for (const task of tasks) groups[task.status]?.push(task);
   for (const id of STATUS_IDS) groups[id].sort(byPosition);
   return groups;
+}
+
+/** Client-side title + priority filter. DnD still runs on the unfiltered list. */
+export function filterTasks(
+  tasks: Task[],
+  query: string,
+  priority: TaskPriority | "all",
+): Task[] {
+  const needle = query.trim().toLowerCase();
+  return tasks.filter((task) => {
+    if (needle && !task.title.toLowerCase().includes(needle)) return false;
+    if (priority !== "all" && task.priority !== priority) return false;
+    return true;
+  });
 }
 
 /**
