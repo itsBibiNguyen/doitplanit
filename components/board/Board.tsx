@@ -532,9 +532,9 @@ export function Board() {
     loadState !== "error" &&
     tasks.length > 0;
 
-  useEffect(() => {
-    if (!summaryAvailable) setSummaryOpen(false);
-  }, [summaryAvailable]);
+  if (!summaryAvailable && summaryOpen) {
+    setSummaryOpen(false);
+  }
 
   if (authStatus === "unconfigured") {
     return (

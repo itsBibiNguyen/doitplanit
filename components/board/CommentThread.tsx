@@ -20,25 +20,28 @@ export function CommentThread({
   onError,
 }: CommentThreadProps) {
   const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [posting, setPosting] = useState(false);
   const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
+  const loading = loadedFor !== taskId;
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     listComments(taskId)
       .then((rows) => {
         if (cancelled) return;
         setComments(rows);
-        setLoading(false);
+        setLoadedFor(taskId);
       })
       .catch((err) => {
         if (cancelled) return;
         onErrorRef.current(toAppError(err));
-        setLoading(false);
+        setLoadedFor(taskId);
       });
     return () => {
       cancelled = true;

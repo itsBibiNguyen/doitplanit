@@ -1,5 +1,7 @@
 # DoitPlanit
 
+[![CI](https://github.com/itsBibiNguyen/doitplanit/actions/workflows/ci.yml/badge.svg)](https://github.com/itsBibiNguyen/doitplanit/actions/workflows/ci.yml)
+
 A fast, focused Kanban board for planning and shipping your work. Tasks move across four columns — To Do, In Progress, In Review, Done — and everything is scoped to you privately, with no sign-up form to fill out.
 
 Built with Next.js, Supabase, and TypeScript.
@@ -180,6 +182,8 @@ lib/
   types.ts            Shared task, label, comment, and activity types
   utils.ts            Class names, due-date, and timestamp formatting
   board.ts            Column grouping, filters, and placement math
+  *.test.ts           Automation tests for board logic, dates, and errors
+.github/workflows/    CI: lint, typecheck, tests, then Vercel deploy
 supabase/
   migrations/         SQL schema and RLS policies
 ```
@@ -201,10 +205,13 @@ All colors, shadows, and radii are CSS variables in `app/globals.css` and expose
 ## Scripts
 
 ```bash
-npm run dev     # Start the dev server
-npm run build   # Production build
-npm start       # Serve the production build
-npm run lint    # ESLint
+npm run dev         # Start the dev server
+npm run build       # Production build
+npm start           # Serve the production build
+npm run lint        # ESLint
+npm run typecheck   # TypeScript (`tsc --noEmit`)
+npm test            # Automation tests (Vitest)
+npm run test:watch  # Vitest in watch mode
 ```
 
 ## Roadmap
@@ -231,10 +238,22 @@ npm run lint    # ESLint
 
 The app deploys to [Vercel](https://vercel.com) with no extra configuration. The production project already has `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` set.
 
-To redeploy from this machine:
+GitHub Actions (`.github/workflows/ci.yml`) is the deploy path: every pull request and every push to `main` runs lint, typecheck, and automation tests. After those jobs pass, pull requests get a Vercel preview and `main` deploys to production. Git-triggered Vercel builds are turned off in `vercel.json` so a push cannot skip CI and go live on its own.
+
+### GitHub secrets
+
+Add these repository secrets under **Settings → Secrets and variables → Actions**:
+
+| Secret | Where to get it |
+| ------ | --------------- |
+| `VERCEL_TOKEN` | [Vercel account tokens](https://vercel.com/account/tokens) — create a token with access to this project |
+| `VERCEL_ORG_ID` | `.vercel/project.json` → `orgId` (created locally by `npx vercel link`) |
+| `VERCEL_PROJECT_ID` | `.vercel/project.json` → `projectId` |
+
+Without those three, the check job still runs but deploy jobs fail closed.
+
+To redeploy from this machine (bypasses CI — use only when you mean to):
 
 ```bash
 npx vercel --prod
 ```
-
-To have every push to `main` deploy automatically, connect the GitHub repo in the Vercel project: **Settings → Git**. The first CLI deploy could not attach `itsBibiNguyen/doitplanit` until the [Vercel GitHub app](https://github.com/apps/vercel) is installed on that repository.

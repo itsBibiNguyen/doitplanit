@@ -40,28 +40,32 @@ const DUE_CHIP: Record<Exclude<DueState, null>, string> = {
 
 export function ActivityFeed({ taskId, labels, onError }: ActivityFeedProps) {
   const [rows, setRows] = useState<TaskActivity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     listActivity(taskId)
       .then((data) => {
         if (cancelled) return;
         setRows(data);
-        setLoading(false);
+        setLoadedFor(taskId);
       })
       .catch((err) => {
         if (cancelled) return;
         onErrorRef.current(toAppError(err));
-        setLoading(false);
+        setLoadedFor(taskId);
       });
     return () => {
       cancelled = true;
     };
   }, [taskId]);
+
+  const loading = loadedFor !== taskId;
 
   if (loading) {
     return <p className="text-sm text-ink-muted">Loading activity…</p>;
