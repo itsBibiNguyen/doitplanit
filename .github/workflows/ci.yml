@@ -65,28 +65,12 @@ jobs:
         with:
           node-version: 22
 
-      - name: Require Vercel secrets
-        run: |
-          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
-            echo "Add repository secrets VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID."
-            exit 1
-          fi
-
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=preview
-
-      - name: Build
-        run: vercel build
-
-      - name: Deploy
+      - name: Deploy preview
         id: deploy
-        run: |
-          URL=$(vercel deploy --prebuilt)
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "Preview deployed to $URL" >> "$GITHUB_STEP_SUMMARY"
+        run: bash .github/scripts/vercel-deploy.sh preview
 
   deploy-production:
     name: Deploy production
@@ -106,25 +90,9 @@ jobs:
         with:
           node-version: 22
 
-      - name: Require Vercel secrets
-        run: |
-          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
-            echo "Add repository secrets VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID."
-            exit 1
-          fi
-
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production
-
-      - name: Build
-        run: vercel build --prod
-
-      - name: Deploy
+      - name: Deploy production
         id: deploy
-        run: |
-          URL=$(vercel deploy --prebuilt --prod)
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "Production deployed to $URL" >> "$GITHUB_STEP_SUMMARY"
+        run: bash .github/scripts/vercel-deploy.sh production
