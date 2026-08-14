@@ -44,27 +44,15 @@ if [ "$http_code" != "200" ]; then
   echo "The token must belong to an account that can deploy this team project, and the two IDs must not be swapped." >&2
   exit 1
 fi
+echo "Linked to Vercel project $(jq -r '.name // "unknown"' /tmp/vercel-project.json)"
 
-# --scope wants the team slug (e.g. my-team), not the team_… id.
-team_http="$(
-  curl -sS -o /tmp/vercel-team.json -w '%{http_code}' \
-    -H "Authorization: Bearer ${VERCEL_TOKEN}" \
-    "https://api.vercel.com/v2/teams/${VERCEL_ORG_ID}"
-)"
-SCOPE="$(jq -r '.slug // empty' /tmp/vercel-team.json 2>/dev/null || true)"
-if [ "$team_http" != "200" ] || [ -z "$SCOPE" ]; then
-  message="$(jq -r '.error.message // .message // empty' /tmp/vercel-team.json 2>/dev/null || true)"
-  echo "Could not resolve Vercel team slug (HTTP ${team_http}).${message:+ ${message}}" >&2
-  exit 1
-fi
-echo "Deploying to Vercel team '$SCOPE'"
-
+# Link via project.json so the CLI sends teamId. Skip `vercel pull` + `--prebuilt`:
+# this token can read the project but not GET /v2/teams, and `--scope team_…`
+# is rejected as a user lookup. A remote Vercel build still uses dashboard env vars.
 mkdir -p .vercel
 printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
 
-vercel pull --yes --environment="$ENVIRONMENT" --scope="$SCOPE"
-vercel build "${PROD_FLAGS[@]}" --scope="$SCOPE"
-URL="$(vercel deploy --prebuilt "${PROD_FLAGS[@]}" --scope="$SCOPE")"
+URL="$(vercel deploy --yes "${PROD_FLAGS[@]}")"
 
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   echo "url=$URL" >> "$GITHUB_OUTPUT"
