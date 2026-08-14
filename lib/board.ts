@@ -106,29 +106,76 @@ export function filterTasks(
   });
 }
 
+export interface BoardSummaryRecentTask {
+  id: string;
+  title: string;
+  updated_at: string;
+}
+
 export interface BoardSummaryCounts {
   total: number;
   done: number;
   overdue: number;
   byStatus: Record<TaskStatus, number>;
+  /** Newest three tasks currently in each column, by last update (moves bump this). */
+  recentByStatus: Record<TaskStatus, BoardSummaryRecentTask[]>;
+}
+
+const RECENT_PER_STATUS = 3;
+
+const emptyStatusCounts = (): Record<TaskStatus, number> => ({
+  todo: 0,
+  in_progress: 0,
+  in_review: 0,
+  done: 0,
+});
+
+const emptyStatusTasks = (): Record<TaskStatus, Task[]> => ({
+  todo: [],
+  in_progress: [],
+  in_review: [],
+  done: [],
+});
+
+function recentInStatus(
+  buckets: Record<TaskStatus, Task[]>,
+): Record<TaskStatus, BoardSummaryRecentTask[]> {
+  const recent = {} as Record<TaskStatus, BoardSummaryRecentTask[]>;
+  for (const id of STATUS_IDS) {
+    recent[id] = buckets[id]
+      .sort((a, b) => {
+        const byTime = b.updated_at.localeCompare(a.updated_at);
+        return byTime !== 0 ? byTime : a.id.localeCompare(b.id);
+      })
+      .slice(0, RECENT_PER_STATUS)
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+        updated_at: task.updated_at,
+      }));
+  }
+  return recent;
 }
 
 /** Totals from the full task list — filters must not change these numbers. */
 export function summarizeBoard(tasks: Task[]): BoardSummaryCounts {
-  const byStatus: Record<TaskStatus, number> = {
-    todo: 0,
-    in_progress: 0,
-    in_review: 0,
-    done: 0,
-  };
+  const byStatus = emptyStatusCounts();
+  const buckets = emptyStatusTasks();
   let overdue = 0;
   for (const task of tasks) {
     byStatus[task.status] += 1;
+    buckets[task.status].push(task);
     if (task.status !== "done" && dueState(task.due_date) === "overdue") {
       overdue += 1;
     }
   }
-  return { total: tasks.length, done: byStatus.done, overdue, byStatus };
+  return {
+    total: tasks.length,
+    done: byStatus.done,
+    overdue,
+    byStatus,
+    recentByStatus: recentInStatus(buckets),
+  };
 }
 
 /**

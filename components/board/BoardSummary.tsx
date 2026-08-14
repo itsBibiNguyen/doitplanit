@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TaskStatus } from "@/lib/types";
 import { TASK_STATUSES } from "@/lib/types";
-import type { BoardSummaryCounts } from "@/lib/board";
+import type {
+  BoardSummaryCounts,
+  BoardSummaryRecentTask,
+} from "@/lib/board";
+import { STATUS_LABEL } from "@/lib/board";
 import { CloseIcon } from "@/components/icons";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 
 const BOARD_SUMMARY_ID = "board-summary";
 
@@ -29,6 +33,7 @@ export function BoardSummary({
   done,
   overdue,
   byStatus,
+  recentByStatus,
   onClose,
 }: BoardSummaryProps) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -122,20 +127,7 @@ export function BoardSummary({
 
           <div>
             <p className="text-xs font-medium text-ink">By status</p>
-            <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-surface-2">
-              {TASK_STATUSES.map((col) => {
-                const count = byStatus[col.id];
-                if (count === 0) return null;
-                return (
-                  <div
-                    key={col.id}
-                    className={cn("h-full", STATUS_FILL[col.id])}
-                    style={{ flexGrow: count, flexBasis: 0 }}
-                    title={`${col.label}: ${count}`}
-                  />
-                );
-              })}
-            </div>
+            <StatusChart byStatus={byStatus} recentByStatus={recentByStatus} />
             <ul className="mt-3 space-y-1.5">
               {TASK_STATUSES.map((col) => {
                 const count = byStatus[col.id];
@@ -167,6 +159,104 @@ export function BoardSummary({
         </div>
       </aside>
     </>
+  );
+}
+
+function StatusChart({
+  byStatus,
+  recentByStatus,
+}: {
+  byStatus: BoardSummaryCounts["byStatus"];
+  recentByStatus: BoardSummaryCounts["recentByStatus"];
+}) {
+  const [active, setActive] = useState<TaskStatus | null>(null);
+
+  return (
+    <div
+      className="mt-2"
+      onMouseLeave={() => setActive(null)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setActive(null);
+        }
+      }}
+    >
+      <div className="flex h-3.5 items-stretch gap-0.5 rounded-full bg-surface-2 p-0.5">
+        {TASK_STATUSES.map((col) => {
+          const count = byStatus[col.id];
+          if (count === 0) return null;
+          const selected = active === col.id;
+          return (
+            <button
+              key={col.id}
+              type="button"
+              aria-expanded={selected}
+              aria-controls={
+                selected ? `status-recent-${col.id}` : undefined
+              }
+              aria-label={`${col.label}: ${count}`}
+              onMouseEnter={() => setActive(col.id)}
+              onFocus={() => setActive(col.id)}
+              onClick={() =>
+                setActive((current) => (current === col.id ? null : col.id))
+              }
+              className={cn(
+                "min-w-2.5 cursor-pointer rounded-full transition-[box-shadow,transform] duration-150",
+                STATUS_FILL[col.id],
+                selected &&
+                  "relative z-10 scale-y-125 shadow-[0_0_0_2px_var(--surface),0_0_0_4px_var(--ink-soft)]",
+              )}
+              style={{ flexGrow: count, flexBasis: 0 }}
+            />
+          );
+        })}
+      </div>
+      {active ? (
+        <RecentTasksDropdown
+          status={active}
+          tasks={recentByStatus[active]}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function RecentTasksDropdown({
+  status,
+  tasks,
+}: {
+  status: TaskStatus;
+  tasks: BoardSummaryRecentTask[];
+}) {
+  const label = STATUS_LABEL[status];
+
+  return (
+    <div
+      id={`status-recent-${status}`}
+      role="region"
+      aria-label={`Newest tasks in ${label}`}
+      className="dp-fade-in mt-2 rounded-[var(--radius-sm)] border border-border bg-surface-2 px-3 py-2"
+    >
+      <p className="text-[11px] font-medium text-ink-muted">
+        Newest in {label}
+      </p>
+      {tasks.length === 0 ? (
+        <p className="mt-1 text-xs text-ink-muted">No tasks yet</p>
+      ) : (
+        <ul className="mt-1.5 space-y-1.5">
+          {tasks.map((task) => (
+            <li key={task.id} className="min-w-0">
+              <p className="truncate text-xs font-medium text-ink">
+                {task.title}
+              </p>
+              <p className="text-[11px] text-ink-muted">
+                {formatRelativeTime(task.updated_at)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

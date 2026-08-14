@@ -14,7 +14,7 @@ Built with Next.js, Supabase, and TypeScript.
 - **Comments.** A chronological thread on each task, loaded when you open it — posting stays in the dialog so you can keep going.
 - **Activity.** Moves, title, priority, due date, and label changes are logged by the database (including drag-and-drop) and shown newest-first next to comments.
 - **Search and filters.** Title search, priority chips, and label chips hide cards in place; dragging still uses the full board so a drop cannot skip a hidden card.
-- **Board at a glance.** A header button opens a summary panel with total, done, and overdue counts plus a status chart — always from the unfiltered list, closed by default so it does not steal column width.
+- **Board at a glance.** A header button opens a summary panel with total, done, and overdue counts plus a status chart — always from the unfiltered list, closed by default so it does not steal column width. Hover a chart segment to highlight it and see the three tasks most recently added to that column.
 - **Responsive.** Columns scroll horizontally on narrow screens with a sticky header.
 - **Honest about failure.** Losing connection shows a banner instead of breaking the board, a drop that can't be saved slides back with a retry, and every error message says what to do next rather than echoing a Postgres code.
 
